@@ -20,6 +20,23 @@ export default async function handler(req, res) {
 
         const endTime = Date.now();
         const responseTime = endTime - startTime;
+        const timestamp = new Date().toISOString();
+        const connected = response.ok;
+
+        // Record health state change
+        try {
+            await fetch(`http://localhost:${process.env.PORT || 3000}/api/spicedb/health-history`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    connected,
+                    responseTime,
+                    timestamp
+                })
+            });
+        } catch (e) {
+            // Ignore history tracking errors
+        }
 
         if (response.ok) {
             res.status(200).json({
@@ -27,7 +44,7 @@ export default async function handler(req, res) {
                 connected: true,
                 responseTime: `${responseTime}ms`,
                 spicedbUrl: spicedbUrl,
-                timestamp: new Date().toISOString()
+                timestamp: timestamp
             });
         } else {
             const errorText = await response.text();
@@ -37,17 +54,34 @@ export default async function handler(req, res) {
                 error: `HTTP ${response.status}: ${errorText}`,
                 responseTime: `${responseTime}ms`,
                 spicedbUrl: spicedbUrl,
-                timestamp: new Date().toISOString()
+                timestamp: timestamp
             });
         }
 
     } catch (error) {
+        const timestamp = new Date().toISOString();
+        
+        // Record health state change
+        try {
+            await fetch(`http://localhost:${process.env.PORT || 3000}/api/spicedb/health-history`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    connected: false,
+                    responseTime: null,
+                    timestamp
+                })
+            });
+        } catch (e) {
+            // Ignore history tracking errors
+        }
+
         res.status(200).json({
             status: 'unhealthy',
             connected: false,
             error: error.message,
             spicedbUrl: spicedbUrl,
-            timestamp: new Date().toISOString()
+            timestamp: timestamp
         });
     }
 }

@@ -229,7 +229,7 @@ const Dashboard: NextPage = () => {
                                             }`}
                                     >
                                         {stats.isConnected ? "Connected" : "Disconnected"}
-                                    </dd>
+                                    </span></dd>
                                 </dl>
                             </div>
                         </div>
@@ -245,7 +245,7 @@ const Dashboard: NextPage = () => {
                             <div className="ml-5 w-0 flex-1">
                                 <dl>
                                     <dt className="text-sm font-medium text-white truncate">Namespaces</dt>
-                                    <dd className="text-lg font-medium text-white">{stats.isConnected ? stats.totalNamespaces : '--'}</dd>
+                                    <dd className="text-lg font-medium text-white">{stats.isConnected ? stats.totalNamespaces : '--'}</span></dd>
                                 </dl>
                             </div>
                         </div>
@@ -261,7 +261,7 @@ const Dashboard: NextPage = () => {
                             <div className="ml-5 w-0 flex-1">
                                 <dl>
                                     <dt className="text-sm font-medium text-white truncate">Relationships</dt>
-                                    <dd className="text-lg font-medium text-white">{stats.isConnected ? stats.totalRelationships : '--'}</dd>
+                                    <dd className="text-lg font-medium text-white">{stats.isConnected ? stats.totalRelationships : '--'}</span></dd>
                                 </dl>
                             </div>
                         </div>
@@ -277,7 +277,7 @@ const Dashboard: NextPage = () => {
                             <div className="ml-5 w-0 flex-1">
                                 <dl>
                                     <dt className="text-sm font-medium text-white truncate">Subjects</dt>
-                                    <dd className="text-lg font-medium text-white">{stats.isConnected ? stats.totalSubjects : '--'}</dd>
+                                    <dd className="text-lg font-medium text-white">{stats.isConnected ? stats.totalSubjects : '--'}</span></dd>
                                 </dl>
                             </div>
                         </div>
@@ -295,7 +295,7 @@ const Dashboard: NextPage = () => {
                                     <dt className="text-sm font-medium text-white truncate">Schema Hash</dt>
                                     <dd className="text-lg font-medium text-white font-mono">
                                         {stats.isConnected ? (stats.schemaHash ? stats.schemaHash.slice(0, 8) : 'N/A') : '--'}
-                                    </dd>
+                                    </span></dd>
                                 </dl>
                             </div>
                         </div>
@@ -313,7 +313,7 @@ const Dashboard: NextPage = () => {
                                     <dt className="text-sm font-medium text-white truncate">API Response</dt>
                                     <dd className="text-lg font-medium text-white">
                                         {stats.isConnected ? (stats.apiResponseTime ? `${stats.apiResponseTime}ms` : 'N/A') : '--'}
-                                    </dd>
+                                    </span></dd>
                                 </dl>
                             </div>
                         </div>
@@ -321,7 +321,31 @@ const Dashboard: NextPage = () => {
                 </div>
             </div>
 
- {/* Recent Activity and Health History Side by Side */}
+            {/* Namespace Details */}
+            {stats.namespacesWithRelationCounts && stats.namespacesWithRelationCounts.length > 0 && (
+                <div className="bg-gray-800 shadow rounded-lg border border-gray-700">
+                    <div className="px-4 py-5 sm:p-6">
+                        <h3 className="text-lg leading-6 font-medium text-white mb-4 flex items-center gap-2">
+                            <IconList size={20} className="text-gray-600" />
+                            Namespace Details
+                        </h3>
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2">
+                            {stats.namespacesWithRelationCounts.map((ns) => (
+                                <div key={ns.namespace} className="border border-gray-600 rounded-lg bg-gray-750 p-4">
+                                    <h4 className="font-medium text-white mb-2">{ns.namespace}</h4>
+                                    <div className="space-y-1 text-sm text-gray-600">
+                                        <div>Relationships: <span className="font-medium">{ns.relationshipCount}</span></div>
+                                        <div>Subjects: <span className="font-medium">{ns.subjectCount}</span></div>
+                                        <div>Relations: <span className="font-medium">{ns.relationTypes.join(', ')}</span></div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Recent Activity and Health History Side by Side */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 {/* Recent Activity */}
                 <div className="bg-gray-800 shadow rounded-lg border border-gray-700">
@@ -414,32 +438,6 @@ const Dashboard: NextPage = () => {
                     </div>
                 )}
             </div>
-
-            {/* Namespace Details */}
-            {stats.namespacesWithRelationCounts && stats.namespacesWithRelationCounts.length > 0 && (
-                <div className="bg-gray-800 shadow rounded-lg border border-gray-700">
-                    <div className="px-4 py-5 sm:p-6">
-                        <h3 className="text-lg leading-6 font-medium text-white mb-4 flex items-center gap-2">
-                            <IconList size={20} className="text-gray-400" />
-                            Namespace Details
-                        </h3>
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2">
-                            {stats.namespacesWithRelationCounts.map((ns) => (
-                                <div key={ns.namespace} className="border border-gray-600 rounded-lg bg-gray-750 p-4">
-                                    <h4 className="font-medium text-white mb-2">{ns.namespace}</h4>
-                                    <div className="space-y-1 text-sm text-gray-400">
-                                        <div>Relationships: <span className="font-medium text-white">{ns.relationshipCount}</span></div>
-                                        <div>Subjects: <span className="font-medium text-white">{ns.subjectCount}</span></div>
-                                        <div>Relations: <span className="font-medium text-white">{ns.relationTypes.join(', ')}</span></div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-           
         </div>
     );
 };
