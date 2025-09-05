@@ -147,8 +147,22 @@ async function getNamespaceRelationshipCounts(spicedbUrl, token, namespaceDetail
             });
 
             if (response.ok) {
-                const data = await response.json();
-                const relationships = data.relationships || [];
+                // SpiceDB returns streaming JSON (newline-delimited)
+                const text = await response.text();
+                const lines = text.trim().split('\n').filter(line => line.trim());
+                const relationships = [];
+                
+                for (const line of lines) {
+                    try {
+                        const parsed = JSON.parse(line);
+                        if (parsed.relationship) {
+                            relationships.push(parsed.relationship);
+                        }
+                    } catch (e) {
+                        // Skip invalid lines
+                        console.debug('Skipping invalid JSON line:', line);
+                    }
+                }
                 
                 // Count unique subjects
                 const uniqueSubjects = new Set();

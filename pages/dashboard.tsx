@@ -1,18 +1,14 @@
 import type { NextPage } from "next";
 import { JSX, useEffect, useRef, useState } from "react";
-import Layout from "../components/Layout";
 import {
-    IconAlertHexagon,
     IconBuilding,
     IconCode,
     IconLink,
     IconCircleCheck,
-    IconRefresh,
     IconSettings,
     IconAlertTriangle,
     IconNotes,
     IconLayoutDashboard,
-    IconRefreshDot,
     IconUsers,
     IconX,
     IconHash,
@@ -71,7 +67,7 @@ const Dashboard: NextPage = () => {
 
     const refreshData = async (signal?: AbortSignal, isInitialLoad = false) => {
         const rid = ++requestIdRef.current;
-        if (isInitialLoad) setIsLoading(true); // Only show loading on first load
+        // Never show loading spinner
         setError("");
 
         try {
@@ -90,10 +86,40 @@ const Dashboard: NextPage = () => {
 
             // Health is source of truth for connection
             let connected = stats.isConnected;
+            let previousConnected = stats.isConnected;
             if (healthRes.ok) {
                 const healthData = await healthRes.json();
                 connected = !!healthData.connected;
                 setHealthChecked(true);
+                
+                // Add disconnection/reconnection to activity
+                if (previousConnected !== connected) {
+                    const newActivity: Activity = {
+                        id: `conn-${Date.now()}`,
+                        type: "system",
+                        title: connected ? "Connection Restored" : "Connection Lost",
+                        description: connected ? "Successfully reconnected to SpiceDB" : "Lost connection to SpiceDB",
+                        timestamp: new Date().toLocaleTimeString(),
+                        createdAt: new Date().toISOString()
+                    };
+                    setRecentActivity(prev => [newActivity, ...prev].slice(0, 10));
+                }
+            } else {
+                // Health check failed - we're disconnected
+                connected = false;
+                setHealthChecked(true);
+                
+                if (previousConnected !== connected) {
+                    const newActivity: Activity = {
+                        id: `conn-${Date.now()}`,
+                        type: "error",
+                        title: "Connection Lost",
+                        description: "Unable to reach SpiceDB server",
+                        timestamp: new Date().toLocaleTimeString(),
+                        createdAt: new Date().toISOString()
+                    };
+                    setRecentActivity(prev => [newActivity, ...prev].slice(0, 10));
+                }
             }
 
             // Activity (best-effort)
@@ -120,9 +146,9 @@ const Dashboard: NextPage = () => {
             });
         } catch (e: any) {
             if (signal?.aborted) return;
-            if (isInitialLoad) setError(e?.message || "Connection error"); // Only show errors on initial load
+            // Don't show errors, just let the disconnected status show
         } finally {
-            if (rid === requestIdRef.current && isInitialLoad) setIsLoading(false);
+            // Never use loading state
         }
     };
 
@@ -191,26 +217,8 @@ const Dashboard: NextPage = () => {
                 />
             )}
 
-            {showConnectionProblem && (
-                <Warning
-                    title="Connection Problem"
-                    error="Unable to connect to SpiceDB. Please check your connection settings."
-                />
-            )}
-
-            {isLoading && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex items-center">
-                        <div className="animate-spin mr-2"><IconRefreshDot /></div>
-                        <span className="text-blue-700">Loading dashboard data...</span>
-                    </div>
-                </div>
-            )}
-
             {/* Main Stats */}
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-
-
                 <div className="bg-gray-800 overflow-hidden shadow rounded-lg border border-gray-700">
                     <div className="p-5">
                         <div className="flex items-center">
@@ -223,7 +231,7 @@ const Dashboard: NextPage = () => {
                             </div>
                             <div className="ml-5 w-0 flex-1">
                                 <dl>
-                                    <dt className="text-sm font-medium text-white truncate">Status</dt>
+                                    <dt className="text-sm font-medium text-zinc-400 truncate">Status</dt>
                                     <dd
                                         className={`text-lg font-medium ${stats.isConnected ? "text-green-400" : "text-red-400"
                                             }`}
@@ -240,12 +248,12 @@ const Dashboard: NextPage = () => {
                     <div className="p-5">
                         <div className="flex items-center">
                             <div className="flex-shrink-0">
-                                <IconBuilding size={24} stroke={1.8} className="text-gray-400" aria-hidden />
+                                <IconBuilding size={24} stroke={1.8} className="text-purple-500" aria-hidden />
                             </div>
                             <div className="ml-5 w-0 flex-1">
                                 <dl>
-                                    <dt className="text-sm font-medium text-white truncate">Namespaces</dt>
-                                    <dd className="text-lg font-medium text-white">{stats.isConnected ? stats.totalNamespaces : '--'}</dd>
+                                    <dt className="text-sm font-medium text-zinc-400 truncate">Namespaces</dt>
+                                    <dd className="text-xl flex mt-1 p-1 bg-blue-900 rounded-lg w-20 justify-center items-center font-bold text-white">{stats.isConnected ? stats.totalNamespaces : '--'}</dd>
                                 </dl>
                             </div>
                         </div>
@@ -256,12 +264,12 @@ const Dashboard: NextPage = () => {
                     <div className="p-5">
                         <div className="flex items-center">
                             <div className="flex-shrink-0">
-                                <IconLink size={24} stroke={1.8} className="text-gray-400" aria-hidden />
+                                <IconLink size={24} stroke={1.8} className="text-purple-500" aria-hidden />
                             </div>
                             <div className="ml-5 w-0 flex-1">
                                 <dl>
-                                    <dt className="text-sm font-medium text-white truncate">Relationships</dt>
-                                    <dd className="text-lg font-medium text-white">{stats.isConnected ? stats.totalRelationships : '--'}</dd>
+                                    <dt className="text-sm font-medium text-zinc-400 truncate">Relationships</dt>
+                                    <dd className="text-xl flex mt-1 p-1 bg-blue-900 rounded-lg w-20 justify-center items-center font-bold text-white">{stats.isConnected ? stats.totalRelationships : '--'}</dd>
                                 </dl>
                             </div>
                         </div>
@@ -272,12 +280,12 @@ const Dashboard: NextPage = () => {
                     <div className="p-5">
                         <div className="flex items-center">
                             <div className="flex-shrink-0">
-                                <IconUsers size={24} stroke={1.8} className="text-gray-400" aria-hidden />
+                                <IconUsers size={24} stroke={1.8} className="text-purple-500" aria-hidden />
                             </div>
                             <div className="ml-5 w-0 flex-1">
                                 <dl>
-                                    <dt className="text-sm font-medium text-white truncate">Subjects</dt>
-                                    <dd className="text-lg font-medium text-white">{stats.isConnected ? stats.totalSubjects : '--'}</dd>
+                                    <dt className="text-sm font-medium text-zinc-400 truncate">Subjects</dt>
+                                    <dd className="text-xl flex mt-1 p-1 bg-blue-900 rounded-lg w-20 justify-center items-center font-bold text-white">{stats.isConnected ? stats.totalSubjects : '--'}</dd>
                                 </dl>
                             </div>
                         </div>
@@ -288,12 +296,12 @@ const Dashboard: NextPage = () => {
                     <div className="p-5">
                         <div className="flex items-center">
                             <div className="flex-shrink-0">
-                                <IconHash size={24} stroke={1.8} className="text-gray-400" aria-hidden />
+                                <IconHash size={24} stroke={1.8} className="text-purple-500" aria-hidden />
                             </div>
                             <div className="ml-5 w-0 flex-1">
                                 <dl>
-                                    <dt className="text-sm font-medium text-white truncate">Schema Hash</dt>
-                                    <dd className="text-lg font-medium text-white font-mono">
+                                    <dt className="text-sm font-medium text-zinc-400 truncate">Schema Hash</dt>
+                                    <dd className="text-xl flex mt-1 p-1 bg-blue-900 rounded-lg w-40 justify-center items-center font-bold text-white font-mono">
                                         {stats.isConnected ? (stats.schemaHash ? stats.schemaHash.slice(0, 8) : 'N/A') : '--'}
                                     </dd>
                                 </dl>
@@ -306,12 +314,12 @@ const Dashboard: NextPage = () => {
                     <div className="p-5">
                         <div className="flex items-center">
                             <div className="flex-shrink-0">
-                                <IconClock size={24} stroke={1.8} className="text-gray-400" aria-hidden />
+                                <IconClock size={24} stroke={1.8} className="text-purple-500" aria-hidden />
                             </div>
                             <div className="ml-5 w-0 flex-1">
                                 <dl>
-                                    <dt className="text-sm font-medium text-white truncate">API Response</dt>
-                                    <dd className="text-lg font-medium text-white">
+                                    <dt className="text-sm font-medium text-zinc-400 truncate">Average API Response</dt>
+                                    <dd className="text-xl flex mt-1 p-1 bg-blue-900 rounded-lg w-25 justify-center items-center font-bold text-white">
                                         {stats.isConnected ? (stats.apiResponseTime ? `${stats.apiResponseTime}ms` : 'N/A') : '--'}
                                     </dd>
                                 </dl>
