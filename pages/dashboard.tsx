@@ -55,20 +55,7 @@ const Dashboard: NextPage = () => {
     });
 
     const [recentActivity, setRecentActivity] = useState<Activity[]>([]);
-    const [healthHistory, setHealthHistory] = useState<any[]>(() => {
-        // Initialize from localStorage if available
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('healthHistory');
-            if (saved) {
-                try {
-                    return JSON.parse(saved);
-                } catch (e) {
-                    console.error('Failed to parse saved health history:', e);
-                }
-            }
-        }
-        return [];
-    });
+    const [healthHistory, setHealthHistory] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string>("");
 
@@ -114,6 +101,10 @@ const Dashboard: NextPage = () => {
                 const activityData = await activityRes.json();
                 if (activityData.activities && Array.isArray(activityData.activities)) {
                     setRecentActivity(activityData.activities);
+                    // Save to localStorage for persistence
+                    if (typeof window !== 'undefined') {
+                        localStorage.setItem('recentActivity', JSON.stringify(activityData.activities));
+                    }
                 }
             }
 
@@ -152,6 +143,35 @@ const Dashboard: NextPage = () => {
             // Never use loading state
         }
     };
+
+    // Load persisted data from localStorage on mount
+    useEffect(() => {
+        // Load health history
+        const savedHistory = localStorage.getItem('healthHistory');
+        if (savedHistory) {
+            try {
+                const parsed = JSON.parse(savedHistory);
+                if (Array.isArray(parsed)) {
+                    setHealthHistory(parsed);
+                }
+            } catch (e) {
+                console.error('Failed to parse saved health history:', e);
+            }
+        }
+        
+        // Load recent activity
+        const savedActivity = localStorage.getItem('recentActivity');
+        if (savedActivity) {
+            try {
+                const parsed = JSON.parse(savedActivity);
+                if (Array.isArray(parsed)) {
+                    setRecentActivity(parsed);
+                }
+            } catch (e) {
+                console.error('Failed to parse saved activity:', e);
+            }
+        }
+    }, []);
 
     useEffect(() => {
         const controller = new AbortController();
@@ -396,7 +416,7 @@ const Dashboard: NextPage = () => {
                     <div className="px-4 py-5 sm:p-6">
                         <h3 className="text-lg leading-6 font-medium text-white mb-4 flex items-center gap-2">
                             <IconCircleCheck size={20} className="text-gray-400" />
-                            Connection Health History
+                            Connection History
                         </h3>
                         {healthHistory && healthHistory.length > 0 ? (
                             <div className="space-y-2">

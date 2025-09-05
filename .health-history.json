@@ -2,6 +2,24 @@
   "history": [
     {
       "connected": true,
+      "responseTime": 7,
+      "timestamp": "2025-09-05T23:41:58.074Z",
+      "id": 1757115718088,
+      "type": "reconnected",
+      "title": "Connection Restored",
+      "description": "Successfully reconnected to SpiceDB"
+    },
+    {
+      "connected": false,
+      "responseTime": 73,
+      "timestamp": "2025-09-05T23:41:38.960Z",
+      "id": 1757115699044,
+      "type": "disconnected",
+      "title": "Connection Lost",
+      "description": "Unable to reach SpiceDB"
+    },
+    {
+      "connected": true,
       "responseTime": 5682,
       "timestamp": "2025-09-05T23:31:44.454Z",
       "id": 1757115104486,
