@@ -18,10 +18,8 @@ export default async function handler(req, res) {
         });
 
         if (!schemaResponse.ok) {
-            const errorText = await schemaResponse.text();
-            return res.status(schemaResponse.status).json({
-                message: `SpiceDB error: ${errorText}`
-            });
+            const errorText = await schemaResponse.json();
+            return res.status(schemaResponse.status).json(errorText);
         }
 
         const schemaData = await schemaResponse.json();
