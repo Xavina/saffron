@@ -102,7 +102,11 @@ const Dashboard: NextPage = () => {
                         timestamp: new Date().toLocaleTimeString(),
                         createdAt: new Date().toISOString()
                     };
-                    setRecentActivity(prev => [newActivity, ...prev].slice(0, 10));
+                    setRecentActivity(prev => {
+                        // Keep only connection-related events and add the new one
+                        const connectionEvents = prev.filter(a => a.id?.startsWith('conn-'));
+                        return [newActivity, ...connectionEvents].slice(0, 3);
+                    });
                 }
             } else {
                 // Health check failed - we're disconnected
@@ -118,20 +122,24 @@ const Dashboard: NextPage = () => {
                         timestamp: new Date().toLocaleTimeString(),
                         createdAt: new Date().toISOString()
                     };
-                    setRecentActivity(prev => [newActivity, ...prev].slice(0, 10));
+                    setRecentActivity(prev => {
+                        // Keep only connection-related events and add the new one
+                        const connectionEvents = prev.filter(a => a.id?.startsWith('conn-'));
+                        return [newActivity, ...connectionEvents].slice(0, 3);
+                    });
                 }
             }
 
-            // Activity (best-effort)
-            if (activityRes.ok) {
-                const activityData = await activityRes.json();
-                setRecentActivity(Array.isArray(activityData.activities) ? activityData.activities : []);
-            }
+            // Activity (best-effort) - skip this since we don't have a real activity API
+            // We're only tracking connection events for now
 
-            // Health History (best-effort)
+            // Health History (best-effort) - only update if we have data
             if (healthHistoryRes.ok) {
                 const historyData = await healthHistoryRes.json();
-                setHealthHistory(Array.isArray(historyData.history) ? historyData.history : []);
+                if (historyData.history && Array.isArray(historyData.history)) {
+                    setHealthHistory(historyData.history);
+                }
+                // Don't clear if the response doesn't have history
             }
 
             setStats({
@@ -180,8 +188,17 @@ const Dashboard: NextPage = () => {
 
     const showConnectionProblem = healthChecked && !isLoading && !stats.isConnected;
 
-    const getActivityIcon = (type: Activity["type"]): JSX.Element => {
-        switch (type) {
+    const getActivityIcon = (activity: Activity): JSX.Element => {
+        // Special handling for connection events
+        if (activity.id?.startsWith('conn-')) {
+            if (activity.title === "Connection Restored") {
+                return <IconCircleCheck size={16} stroke={1.8} className="text-green-400" />;
+            } else if (activity.title === "Connection Lost") {
+                return <IconX size={16} stroke={1.8} className="text-red-400" />;
+            }
+        }
+        
+        switch (activity.type) {
             case "schema":
                 return <IconCode size={16} stroke={1.8} />;
             case "relationship":
@@ -253,7 +270,7 @@ const Dashboard: NextPage = () => {
                             <div className="ml-5 w-0 flex-1">
                                 <dl>
                                     <dt className="text-sm font-medium text-zinc-400 truncate">Namespaces</dt>
-                                    <dd className="text-xl flex mt-1 p-1 bg-blue-900 rounded-lg w-20 justify-center items-center font-bold text-white">{stats.isConnected ? stats.totalNamespaces : '--'}</dd>
+                                    <dd className="text-xl flex mt-1 p-1 bg-blue-900 rounded-lg w-40 justify-center items-center font-bold text-white font-mono">{stats.isConnected ? stats.totalNamespaces : '--'}</dd>
                                 </dl>
                             </div>
                         </div>
@@ -269,7 +286,7 @@ const Dashboard: NextPage = () => {
                             <div className="ml-5 w-0 flex-1">
                                 <dl>
                                     <dt className="text-sm font-medium text-zinc-400 truncate">Relationships</dt>
-                                    <dd className="text-xl flex mt-1 p-1 bg-blue-900 rounded-lg w-20 justify-center items-center font-bold text-white">{stats.isConnected ? stats.totalRelationships : '--'}</dd>
+                                    <dd className="text-xl flex mt-1 p-1 bg-blue-900 rounded-lg w-40 justify-center items-center font-bold text-white font-mono">{stats.isConnected ? stats.totalRelationships : '--'}</dd>
                                 </dl>
                             </div>
                         </div>
@@ -285,7 +302,7 @@ const Dashboard: NextPage = () => {
                             <div className="ml-5 w-0 flex-1">
                                 <dl>
                                     <dt className="text-sm font-medium text-zinc-400 truncate">Subjects</dt>
-                                    <dd className="text-xl flex mt-1 p-1 bg-blue-900 rounded-lg w-20 justify-center items-center font-bold text-white">{stats.isConnected ? stats.totalSubjects : '--'}</dd>
+                                    <dd className="text-xl flex mt-1 p-1 bg-blue-900 rounded-lg w-40 justify-center items-center font-bold text-white font-mono">{stats.isConnected ? stats.totalSubjects : '--'}</dd>
                                 </dl>
                             </div>
                         </div>
@@ -319,7 +336,7 @@ const Dashboard: NextPage = () => {
                             <div className="ml-5 w-0 flex-1">
                                 <dl>
                                     <dt className="text-sm font-medium text-zinc-400 truncate">Average API Response</dt>
-                                    <dd className="text-xl flex mt-1 p-1 bg-blue-900 rounded-lg w-25 justify-center items-center font-bold text-white">
+                                    <dd className="text-xl flex mt-1 p-1 bg-blue-900 rounded-lg w-40 justify-center items-center font-bold text-white font-mono">
                                         {stats.isConnected ? (stats.apiResponseTime ? `${stats.apiResponseTime}ms` : 'N/A') : '--'}
                                     </dd>
                                 </dl>
@@ -353,9 +370,7 @@ const Dashboard: NextPage = () => {
                                                 <div className="relative flex space-x-3">
                                                     <div>
                                                         <span className="h-8 w-8 rounded-full bg-gray-700 flex items-center justify-center">
-                                                            <span className="text-sm text-gray-300" aria-hidden>
-                                                                {getActivityIcon(activity.type)}
-                                                            </span>
+                                                            {getActivityIcon(activity)}
                                                         </span>
                                                     </div>
                                                     <div className="min-w-0 flex-1">
@@ -384,13 +399,13 @@ const Dashboard: NextPage = () => {
                 </div>
 
                 {/* Connection Health History */}
-                {healthHistory && healthHistory.length > 0 && (
-                    <div className="bg-gray-800 shadow rounded-lg border border-gray-700">
-                        <div className="px-4 py-5 sm:p-6">
-                            <h3 className="text-lg leading-6 font-medium text-white mb-4 flex items-center gap-2">
-                                <IconCircleCheck size={20} className="text-gray-400" />
-                                Connection Health History
-                            </h3>
+                <div className="bg-gray-800 shadow rounded-lg border border-gray-700">
+                    <div className="px-4 py-5 sm:p-6">
+                        <h3 className="text-lg leading-6 font-medium text-white mb-4 flex items-center gap-2">
+                            <IconCircleCheck size={20} className="text-gray-400" />
+                            Connection Health History
+                        </h3>
+                        {healthHistory && healthHistory.length > 0 ? (
                             <div className="space-y-2">
                                 {healthHistory.map((entry) => (
                                     <div key={entry.id} className="flex items-center justify-between py-2 px-3 rounded border border-gray-600 bg-gray-750">
@@ -418,9 +433,11 @@ const Dashboard: NextPage = () => {
                                     </div>
                                 ))}
                             </div>
-                        </div>
+                        ) : (
+                            <p className="text-gray-400">No connection history yet</p>
+                        )}
                     </div>
-                )}
+                </div>
             </div>
 
             {/* Namespace Details */}
