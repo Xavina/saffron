@@ -55,7 +55,20 @@ const Dashboard: NextPage = () => {
     });
 
     const [recentActivity, setRecentActivity] = useState<Activity[]>([]);
-    const [healthHistory, setHealthHistory] = useState<any[]>([]);
+    const [healthHistory, setHealthHistory] = useState<any[]>(() => {
+        // Initialize from localStorage if available
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('healthHistory');
+            if (saved) {
+                try {
+                    return JSON.parse(saved);
+                } catch (e) {
+                    console.error('Failed to parse saved health history:', e);
+                }
+            }
+        }
+        return [];
+    });
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string>("");
 
@@ -86,61 +99,41 @@ const Dashboard: NextPage = () => {
 
             // Health is source of truth for connection
             let connected = stats.isConnected;
-            let previousConnected = stats.isConnected;
             if (healthRes.ok) {
                 const healthData = await healthRes.json();
                 connected = !!healthData.connected;
                 setHealthChecked(true);
-                
-                // Add disconnection/reconnection to activity
-                if (previousConnected !== connected) {
-                    const newActivity: Activity = {
-                        id: `conn-${Date.now()}`,
-                        type: "system",
-                        title: connected ? "Connection Restored" : "Connection Lost",
-                        description: connected ? "Successfully reconnected to SpiceDB" : "Lost connection to SpiceDB",
-                        timestamp: new Date().toLocaleTimeString(),
-                        createdAt: new Date().toISOString()
-                    };
-                    setRecentActivity(prev => {
-                        // Keep only connection-related events and add the new one
-                        const connectionEvents = prev.filter(a => a.id?.startsWith('conn-'));
-                        return [newActivity, ...connectionEvents].slice(0, 3);
-                    });
-                }
             } else {
                 // Health check failed - we're disconnected
                 connected = false;
                 setHealthChecked(true);
-                
-                if (previousConnected !== connected) {
-                    const newActivity: Activity = {
-                        id: `conn-${Date.now()}`,
-                        type: "error",
-                        title: "Connection Lost",
-                        description: "Unable to reach SpiceDB server",
-                        timestamp: new Date().toLocaleTimeString(),
-                        createdAt: new Date().toISOString()
-                    };
-                    setRecentActivity(prev => {
-                        // Keep only connection-related events and add the new one
-                        const connectionEvents = prev.filter(a => a.id?.startsWith('conn-'));
-                        return [newActivity, ...connectionEvents].slice(0, 3);
-                    });
+            }
+
+            // Activity (best-effort)
+            if (activityRes.ok) {
+                const activityData = await activityRes.json();
+                if (activityData.activities && Array.isArray(activityData.activities)) {
+                    setRecentActivity(activityData.activities);
                 }
             }
 
-            // Activity (best-effort) - skip this since we don't have a real activity API
-            // We're only tracking connection events for now
-
-            // Health History (best-effort) - only update if we have data
+            // Health History (best-effort) - Don't clear on failure, keep showing last known state
             if (healthHistoryRes.ok) {
-                const historyData = await healthHistoryRes.json();
-                if (historyData.history && Array.isArray(historyData.history)) {
-                    setHealthHistory(historyData.history);
+                try {
+                    const historyData = await healthHistoryRes.json();
+                    if (historyData.history && Array.isArray(historyData.history)) {
+                        setHealthHistory(historyData.history);
+                        // Save to localStorage for persistence
+                        if (typeof window !== 'undefined') {
+                            localStorage.setItem('healthHistory', JSON.stringify(historyData.history));
+                        }
+                    }
+                } catch (e) {
+                    // Keep existing health history on parse error
+                    console.error('Failed to parse health history:', e);
                 }
-                // Don't clear if the response doesn't have history
             }
+            // Note: We intentionally don't clear healthHistory on failure - we want to keep showing it
 
             setStats({
                 totalNamespaces: statsData.totalNamespaces ?? 0,
@@ -415,14 +408,19 @@ const Dashboard: NextPage = () => {
                                             ) : (
                                                 <IconX size={16} className="text-red-400" />
                                             )}
-                                            <span className={`text-sm font-medium ${
-                                                entry.connected ? 'text-green-300' : 'text-red-300'
-                                            }`}>
-                                                {entry.type === 'initial' ? 'Initial Connection' :
-                                                 entry.type === 'reconnected' ? 'Reconnected' :
-                                                 entry.type === 'disconnected' ? 'Connection Lost' :
-                                                 (entry.connected ? 'Connected' : 'Disconnected')}
-                                            </span>
+                                            <div>
+                                                <span className={`text-sm font-medium ${
+                                                    entry.connected ? 'text-green-300' : 'text-red-300'
+                                                }`}>
+                                                    {entry.title || (entry.type === 'initial' ? 'Initial Connection' :
+                                                     entry.type === 'reconnected' ? 'Reconnected' :
+                                                     entry.type === 'disconnected' ? 'Connection Lost' :
+                                                     (entry.connected ? 'Connected' : 'Disconnected'))}
+                                                </span>
+                                                {entry.description && (
+                                                    <p className="text-xs text-gray-400 mt-1">{entry.description}</p>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="text-sm text-gray-400 flex items-center space-x-2">
                                             {entry.responseTime && (

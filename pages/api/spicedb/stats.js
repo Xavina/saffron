@@ -74,6 +74,22 @@ export default async function handler(req, res) {
         const endTime = Date.now();
         stats.apiResponseTime = endTime - startTime;
 
+        // Log health history
+        try {
+            await fetch(`http://localhost:7777/api/spicedb/health-history`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    connected: stats.isConnected,
+                    responseTime: stats.apiResponseTime,
+                    timestamp: stats.lastUpdate
+                })
+            });
+        } catch (error) {
+            // Ignore health history logging errors
+            console.error('Failed to log health history:', error);
+        }
+
         res.status(200).json(stats);
 
     } catch (error) {
