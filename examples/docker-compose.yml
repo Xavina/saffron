@@ -1,0 +1,121 @@
+name: saffron_docker
+services:
+  # Local Postgres instance for development
+  postgres:
+    container_name: postgres-latest
+    image: 'postgres:latest'
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -p 5432 -d postgres"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    ports:
+      - '5432:5432'
+    env_file:
+      - ./postgres/.env
+    networks:
+      - saffron_docker
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  # Local pgAdmin instance for development
+  pgadmin:
+    container_name: pgadmin-latest
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    ports:
+      - 15433:80
+    env_file:
+      - ./pgadmin/.env
+    networks:
+      - saffron_docker
+    volumes:
+      - pgadmindata:/var/lib/pgadmin/
+    depends_on:
+      - postgres
+
+  # SpiceDB migration step - Runs once to migrate data from postgres instance
+  spicedb-migrate:
+    container_name: spicedb-migrate
+    image: authzed/spicedb:latest
+    command: migrate head    
+    env_file:
+      - ./spicedb/.env
+    networks:
+      - saffron_docker
+    volumes:
+      - ./spicedb/data:/etc/spicedb/
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # SpiceDB schema import step - Runs once to import schema into SpiceDB then stops
+  spicedb-prepare:
+    container_name: spicedb-prepare
+    image: authzed/zed:latest
+    command: import file:///opt/spicedb/schema.yml
+    env_file:
+      - ./spicedb/.env
+    networks:
+      - saffron_docker
+    volumes:
+      - ./spicedb/data:/opt/spicedb/
+    depends_on:
+      spicedb:
+        condition: service_healthy
+
+  # Local SpiceDB instance for development
+  spicedb:
+    container_name: spicedb
+    image: authzed/spicedb:latest
+    command: ["serve", "--http-enabled", "--http-addr=:8443"]
+    restart: unless-stopped
+    ports:
+      - "50051:50051"
+      - "8443:8443"
+    depends_on:
+      spicedb-migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "/usr/local/bin/grpc_health_probe",
+          "-addr",
+          "spicedb:50051",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    env_file:
+      - ./spicedb/.env    
+    networks:
+      - saffron_docker
+    volumes:
+      - ./spicedb/data:/etc/spicedb/
+
+  # Saffron UI for visual interaction with SpiceDB
+  saffron:
+    container_name: saffron
+    image: saffron:latest
+    restart: unless-stopped
+    ports:
+      - "7777:7777"
+    env_file:
+      - ./spicedb/.env
+    depends_on:
+      spicedb:
+        condition: service_healthy
+    networks:
+      - saffron_docker
+
+networks:
+  saffron_docker:
+    external: false
+
+volumes:
+  pgdata:
+  pgadmindata:
