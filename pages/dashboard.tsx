@@ -77,11 +77,11 @@ const Dashboard: NextPage = () => {
 
         try {
             // Add timeout to all fetch calls - 5 seconds max
-            const fetchWithTimeout = (url: string, options: any) => {
+            const fetchWithTimeout = (url: string, options: RequestInit): Promise<Response> => {
                 const timeout = 5000;
                 return Promise.race([
                     fetch(url, options),
-                    new Promise((_, reject) => 
+                    new Promise<Response>((_, reject) => 
                         setTimeout(() => reject(new Error('Request timeout')), timeout)
                     )
                 ]);
@@ -92,7 +92,9 @@ const Dashboard: NextPage = () => {
                 fetchWithTimeout("/api/spicedb/health", { signal }),
                 fetchWithTimeout("/api/spicedb/activity", { signal }),
                 fetchWithTimeout("/api/spicedb/health-history", { signal }),
-            ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : null));
+            ]).then(results => results.map(r => 
+                r.status === 'fulfilled' ? r.value as Response : null
+            )) as [Response | null, Response | null, Response | null, Response | null];
 
             if (rid !== requestIdRef.current) return; // a newer request finished already
 
