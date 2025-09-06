@@ -21,16 +21,20 @@ export default async function handler(req, res) {
             namespacesWithRelationCounts: []
         };
 
-        // Test connection and get schema
+        // Test connection and get schema with timeout
         try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+            
             const schemaResponse = await fetch(`${spicedbUrl}/v1/schema/read`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
                 },
-                body: JSON.stringify({})
-            });
+                body: JSON.stringify({}),
+                signal: controller.signal
+            }).finally(() => clearTimeout(timeoutId));
 
             if (schemaResponse.ok) {
                 stats.isConnected = true;
@@ -147,7 +151,10 @@ async function getNamespaceRelationshipCounts(spicedbUrl, token, namespaceDetail
     
     for (const ns of namespaceDetails) {
         try {
-            // Query relationships for this namespace
+            // Query relationships for this namespace with timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
+            
             const response = await fetch(`${spicedbUrl}/v1/relationships/read`, {
                 method: 'POST',
                 headers: {
@@ -159,8 +166,9 @@ async function getNamespaceRelationshipCounts(spicedbUrl, token, namespaceDetail
                         resourceType: ns.name
                     },
                     limit: 1000
-                })
-            });
+                }),
+                signal: controller.signal
+            }).finally(() => clearTimeout(timeoutId));
 
             if (response.ok) {
                 // SpiceDB returns streaming JSON (newline-delimited)

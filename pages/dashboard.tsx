@@ -15,6 +15,8 @@ import {
     IconClock,
     IconList,
     IconHistory,
+    IconPlugConnected,
+    IconPlugConnectedX,
 } from "@tabler/icons-react";
 import Warning from "@/components/Warning";
 
@@ -51,7 +53,7 @@ const Dashboard: NextPage = () => {
         totalRelationships: 0,
         totalSubjects: 0,
         lastUpdate: null,
-        isConnected: false,
+        isConnected: false, // Start with unknown/false state
     });
 
     const [recentActivity, setRecentActivity] = useState<Activity[]>([]);
@@ -64,6 +66,9 @@ const Dashboard: NextPage = () => {
 
     // Ignore stale async responses
     const requestIdRef = useRef(0);
+    
+    // Track the REAL last known connection state to avoid duplicate entries
+    const lastKnownConnectionState = useRef<boolean | null>(null);
 
     const refreshData = async (signal?: AbortSignal, isInitialLoad = false) => {
         const rid = ++requestIdRef.current;
@@ -71,45 +76,123 @@ const Dashboard: NextPage = () => {
         setError("");
 
         try {
-            const [statsRes, healthRes, activityRes, healthHistoryRes] = await Promise.all([
-                fetch("/api/spicedb/stats", { signal }),
-                fetch("/api/spicedb/health", { signal }),
-                fetch("/api/spicedb/activity", { signal }),
-                fetch("/api/spicedb/health-history", { signal }),
-            ]);
+            // Add timeout to all fetch calls - 5 seconds max
+            const fetchWithTimeout = (url: string, options: any) => {
+                const timeout = 5000;
+                return Promise.race([
+                    fetch(url, options),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Request timeout')), timeout)
+                    )
+                ]);
+            };
+            
+            const [statsRes, healthRes, activityRes, healthHistoryRes] = await Promise.allSettled([
+                fetchWithTimeout("/api/spicedb/stats", { signal }),
+                fetchWithTimeout("/api/spicedb/health", { signal }),
+                fetchWithTimeout("/api/spicedb/activity", { signal }),
+                fetchWithTimeout("/api/spicedb/health-history", { signal }),
+            ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : null));
 
             if (rid !== requestIdRef.current) return; // a newer request finished already
 
-            // Stats
-            if (!statsRes.ok) throw new Error("Failed to load stats");
-            const statsData = await statsRes.json();
-
-            // Health is source of truth for connection
-            let connected = stats.isConnected;
-            if (healthRes.ok) {
-                const healthData = await healthRes.json();
-                connected = !!healthData.connected;
-                setHealthChecked(true);
-            } else {
-                // Health check failed - we're disconnected
-                connected = false;
-                setHealthChecked(true);
-            }
-
-            // Activity (best-effort)
-            if (activityRes.ok) {
-                const activityData = await activityRes.json();
-                if (activityData.activities && Array.isArray(activityData.activities)) {
-                    setRecentActivity(activityData.activities);
-                    // Save to localStorage for persistence
-                    if (typeof window !== 'undefined') {
-                        localStorage.setItem('recentActivity', JSON.stringify(activityData.activities));
-                    }
+            // Stats - don't throw on failure, just use defaults
+            let statsData = {
+                totalNamespaces: 0,
+                totalRelationships: 0,
+                totalSubjects: 0,
+                lastUpdate: null,
+                schemaHash: null,
+                apiResponseTime: null,
+                namespacesWithRelationCounts: []
+            };
+            
+            if (statsRes && statsRes.ok) {
+                try {
+                    statsData = await statsRes.json();
+                } catch (e) {
+                    console.error('Failed to parse stats:', e);
                 }
             }
 
+            // Health is source of truth for connection
+            let connected = false;
+            
+            // Check health status
+            if (healthRes && healthRes.ok) {
+                try {
+                    const healthData = await healthRes.json();
+                    connected = !!healthData.connected;
+                    console.log('Health check result:', { connected, healthData });
+                } catch (e) {
+                    connected = false;
+                    console.error('Failed to parse health response:', e);
+                }
+            } else {
+                // Health check failed or timed out - we're disconnected
+                connected = false;
+                console.log('Health check failed:', { healthRes });
+            }
+            
+            setHealthChecked(true);
+            
+            // Track connection state changes in Recent Activity - ONLY if it actually changed
+            const previousConnected = lastKnownConnectionState.current;
+            const hasStateChanged = previousConnected !== null && previousConnected !== connected;
+            
+            console.log('Connection state:', { 
+                previousConnected, 
+                connected, 
+                hasStateChanged,
+                isFirstCheck: previousConnected === null 
+            });
+            
+            // Update the last known state
+            lastKnownConnectionState.current = connected;
+            
+            // Only add activity if this is a REAL state change, not the first check
+            if (hasStateChanged) {
+                const newActivity: Activity = {
+                    id: `conn-${Date.now()}`,
+                    type: connected ? "system" : "error",
+                    title: connected ? "Connection Restored" : "Connection Lost",
+                    description: connected ? "Successfully reconnected to SpiceDB" : "Lost connection to SpiceDB",
+                    timestamp: new Date().toLocaleTimeString(),
+                    createdAt: new Date().toISOString()
+                };
+                
+                setRecentActivity(prev => {
+                    // ADD the new event to existing ones - DON'T FILTER!
+                    const updatedEvents = [newActivity, ...prev].slice(0, 4); // Show 4 entries as requested
+                    
+                    // Save to localStorage
+                    if (typeof window !== 'undefined') {
+                        localStorage.setItem('recentActivity', JSON.stringify(updatedEvents));
+                    }
+                    
+                    return updatedEvents;
+                });
+                
+                // Force an immediate refresh of health history when state changes
+                try {
+                    const historyRes = await fetch("/api/spicedb/health-history");
+                    if (historyRes.ok) {
+                        const historyData = await historyRes.json();
+                        if (historyData.history && Array.isArray(historyData.history)) {
+                            setHealthHistory(historyData.history);
+                        }
+                    }
+                } catch (e) {
+                    console.error('Failed to refresh health history:', e);
+                }
+            }
+
+            // Activity (best-effort) - DON'T USE THIS, it overwrites our connection tracking
+            // We're only tracking connection events in Recent Activity for now
+            // If we had a real activity API, we'd need to merge, not replace
+
             // Health History (best-effort) - Don't clear on failure, keep showing last known state
-            if (healthHistoryRes.ok) {
+            if (healthHistoryRes && healthHistoryRes.ok) {
                 try {
                     const historyData = await healthHistoryRes.json();
                     if (historyData.history && Array.isArray(historyData.history)) {
@@ -202,15 +285,18 @@ const Dashboard: NextPage = () => {
     const showConnectionProblem = healthChecked && !isLoading && !stats.isConnected;
 
     const getActivityIcon = (activity: Activity): JSX.Element => {
-        // Special handling for connection events
-        if (activity.id?.startsWith('conn-')) {
-            if (activity.title === "Connection Restored") {
-                return <IconCircleCheck size={16} stroke={1.8} className="text-green-400" />;
-            } else if (activity.title === "Connection Lost") {
-                return <IconX size={16} stroke={1.8} className="text-red-400" />;
-            }
+        // Special handling for connection events based on action or title
+        const text = activity.action || activity.title || '';
+        
+        // Connection events
+        if (text.includes('Connected') || text.includes('Connection Restored')) {
+            return <IconPlugConnected size={16} stroke={1.8} className="text-green-400" />;
+        }
+        if (text.includes('Connection Failed') || text.includes('Connection Lost') || text.includes('Disconnected')) {
+            return <IconPlugConnectedX size={16} stroke={1.8} className="text-red-400" />;
         }
         
+        // Type-based icons
         switch (activity.type) {
             case "schema":
                 return <IconCode size={16} stroke={1.8} />;
@@ -219,7 +305,7 @@ const Dashboard: NextPage = () => {
             case "check":
                 return <IconCircleCheck size={16} stroke={1.8} />;
             case "system":
-                return <IconSettings size={16} stroke={1.8} />;
+                return <IconSettings size={16} stroke={1.8} className="text-gray-400" />;
             case "error":
                 return <IconAlertTriangle size={16} stroke={1.8} />;
             default:
@@ -371,10 +457,10 @@ const Dashboard: NextPage = () => {
                         {recentActivity.length > 0 ? (
                             <div className="flow-root">
                                 <ul className="-mb-8">
-                                    {recentActivity.map((activity, idx) => (
+                                    {recentActivity.slice(0, 4).map((activity, idx) => (
                                         <li key={activity.id}>
                                             <div className="relative pb-8">
-                                                {idx !== recentActivity.length - 1 ? (
+                                                {idx !== Math.min(recentActivity.length, 4) - 1 ? (
                                                     <span
                                                         className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-600"
                                                         aria-hidden="true"

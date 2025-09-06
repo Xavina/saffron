@@ -9,14 +9,18 @@ export default async function handler(req, res) {
     try {
         const startTime = Date.now();
 
-        // Test basic connectivity with schema read
+        // Test basic connectivity with timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
+        
         const response = await fetch(`${spicedbUrl}/healthz`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`,
-            }
-        });
+            },
+            signal: controller.signal
+        }).finally(() => clearTimeout(timeoutId));
 
         const endTime = Date.now();
         const responseTime = endTime - startTime;
