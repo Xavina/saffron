@@ -371,7 +371,7 @@ const Dashboard: NextPage = () => {
                             <div className="ml-5 w-0 flex-1">
                                 <dl>
                                     <dt className="text-sm font-medium text-zinc-400 truncate">Namespaces</dt>
-                                    <dd className="text-xl flex mt-1 p-1 bg-blue-900 rounded-lg w-40 justify-center items-center font-bold text-white font-mono">{stats.isConnected ? stats.totalNamespaces : '--'}</dd>
+                                    <dd className="text-xl flex mt-1 p-1 bg-blue-900 rounded-lg w-40 justify-center items-center text-white">{stats.isConnected ? stats.totalNamespaces : '--'}</dd>
                                 </dl>
                             </div>
                         </div>
@@ -387,7 +387,7 @@ const Dashboard: NextPage = () => {
                             <div className="ml-5 w-0 flex-1">
                                 <dl>
                                     <dt className="text-sm font-medium text-zinc-400 truncate">Relationships</dt>
-                                    <dd className="text-xl flex mt-1 p-1 bg-blue-900 rounded-lg w-40 justify-center items-center font-bold text-white font-mono">{stats.isConnected ? stats.totalRelationships : '--'}</dd>
+                                    <dd className="text-xl flex mt-1 p-1 bg-blue-900 rounded-lg w-40 justify-center items-center text-white">{stats.isConnected ? stats.totalRelationships : '--'}</dd>
                                 </dl>
                             </div>
                         </div>
@@ -403,7 +403,7 @@ const Dashboard: NextPage = () => {
                             <div className="ml-5 w-0 flex-1">
                                 <dl>
                                     <dt className="text-sm font-medium text-zinc-400 truncate">Subjects</dt>
-                                    <dd className="text-xl flex mt-1 p-1 bg-blue-900 rounded-lg w-40 justify-center items-center font-bold text-white font-mono">{stats.isConnected ? stats.totalSubjects : '--'}</dd>
+                                    <dd className="text-xl flex mt-1 p-1 bg-blue-900 rounded-lg w-40 justify-center items-center text-white">{stats.isConnected ? stats.totalSubjects : '--'}</dd>
                                 </dl>
                             </div>
                         </div>
@@ -419,7 +419,7 @@ const Dashboard: NextPage = () => {
                             <div className="ml-5 w-0 flex-1">
                                 <dl>
                                     <dt className="text-sm font-medium text-zinc-400 truncate">Schema Hash</dt>
-                                    <dd className="text-xl flex mt-1 p-1 bg-blue-900 rounded-lg w-40 justify-center items-center font-bold text-white font-mono">
+                                    <dd className="text-xl flex mt-1 p-1 bg-blue-900 rounded-lg w-40 justify-center items-center text-white">
                                         {stats.isConnected ? (stats.schemaHash ? stats.schemaHash.slice(0, 8) : 'N/A') : '--'}
                                     </dd>
                                 </dl>
@@ -437,7 +437,7 @@ const Dashboard: NextPage = () => {
                             <div className="ml-5 w-0 flex-1">
                                 <dl>
                                     <dt className="text-sm font-medium text-zinc-400 truncate">Average API Response</dt>
-                                    <dd className="text-xl flex mt-1 p-1 bg-blue-900 rounded-lg w-40 justify-center items-center font-bold text-white font-mono">
+                                    <dd className="text-xl flex mt-1 p-1 bg-blue-900 rounded-lg w-40 justify-center items-center text-white">
                                         {stats.isConnected ? (stats.apiResponseTime ? `${stats.apiResponseTime}ms` : 'N/A') : '--'}
                                     </dd>
                                 </dl>

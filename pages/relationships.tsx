@@ -295,8 +295,9 @@ const Relationships: NextPage = () => {
                                                 {new Date(rel.createdAt).toLocaleDateString()}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <button onClick={() => deleteRelationship(rel)} className="text-red-600 hover:text-red-900">
-                                                    <IconTrash />Delete
+                                                <button onClick={() => deleteRelationship(rel)} className="text-red-600 hover:text-red-900 inline-flex items-center gap-1">
+                                                    <IconTrash size={16} />
+                                                    <span>Delete</span>
                                                 </button>
                                             </td>
                                         </tr>
