@@ -153,12 +153,18 @@ const Dashboard: NextPage = () => {
             lastKnownConnectionState.current = connected;
             
             // Only add activity if this is a REAL state change, not the first check
-            if (hasStateChanged) {
+            const shouldAddActivity = hasStateChanged ||
+                (previousConnected === null && connected && recentActivity.length === 0);
+            if (shouldAddActivity) {
                 const newActivity: Activity = {
                     id: `conn-${Date.now()}`,
                     type: connected ? "system" : "error",
-                    title: connected ? "Connection Restored" : "Connection Lost",
-                    description: connected ? "Successfully reconnected to SpiceDB" : "Lost connection to SpiceDB",
+                    title: hasStateChanged
+                        ? (connected ? "Connection Restored" : "Connection Lost")
+                        : "Connected to SpiceDB",
+                    description: hasStateChanged
+                        ? (connected ? "Successfully reconnected to SpiceDB" : "Lost connection to SpiceDB")
+                        : "Successfully connected to SpiceDB",
                     timestamp: new Date().toLocaleTimeString(),
                     createdAt: new Date().toISOString()
                 };
@@ -244,13 +250,36 @@ const Dashboard: NextPage = () => {
             }
         }
         
-        // Load recent activity
+        // Load recent activity - but clear stale connection events older than 5 minutes
         const savedActivity = localStorage.getItem('recentActivity');
         if (savedActivity) {
             try {
                 const parsed = JSON.parse(savedActivity);
                 if (Array.isArray(parsed)) {
-                    setRecentActivity(parsed);
+                    const now = new Date();
+                    const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
+                    
+                    // Filter out old connection events, keep only recent ones
+                    const filteredActivity = parsed.filter(activity => {
+                        if (activity.type === 'system' || activity.type === 'error') {
+                            // Check if it's a connection event
+                            const isConnectionEvent = activity.title?.includes('Connection') || 
+                                                    activity.description?.includes('connection') ||
+                                                    activity.description?.includes('SpiceDB');
+                            
+                            if (isConnectionEvent && activity.createdAt) {
+                                const eventDate = new Date(activity.createdAt);
+                                return eventDate > fiveMinutesAgo;
+                            }
+                        }
+                        // Keep non-connection events
+                        return true;
+                    });
+                    
+                    setRecentActivity(filteredActivity);
+                    
+                    // Update localStorage with filtered data
+                    localStorage.setItem('recentActivity', JSON.stringify(filteredActivity));
                 }
             } catch (e) {
                 console.error('Failed to parse saved activity:', e);
@@ -342,9 +371,9 @@ const Dashboard: NextPage = () => {
                         <div className="flex items-center">
                             <div className="flex-shrink-0">
                                 {stats.isConnected ? (
-                                    <IconCircleCheck size={24} stroke={1.8} className="text-green-400" aria-hidden />
+                                    <IconCircleCheck size={48} stroke={1.8} className="text-orange-300" aria-hidden />
                                 ) : (
-                                    <IconX size={24} stroke={1.8} className="text-red-400" aria-hidden />
+                                        <IconX size={48} stroke={1.8} className="text-orange-300" aria-hidden />
                                 )}
                             </div>
                             <div className="ml-5 w-0 flex-1">
@@ -366,12 +395,12 @@ const Dashboard: NextPage = () => {
                     <div className="p-5">
                         <div className="flex items-center">
                             <div className="flex-shrink-0">
-                                <IconBuilding size={24} stroke={1.8} className="text-purple-500" aria-hidden />
+                                <IconBuilding size={48} stroke={1.8} className="text-orange-300" aria-hidden />
                             </div>
                             <div className="ml-5 w-0 flex-1">
                                 <dl>
                                     <dt className="text-sm font-medium text-zinc-400 truncate">Namespaces</dt>
-                                    <dd className="text-xl flex mt-1 p-1 bg-blue-900 rounded-lg w-40 justify-center items-center text-white">{stats.isConnected ? stats.totalNamespaces : '--'}</dd>
+                                    <dd className="text-xl flex mt-1 p-1 bg-purple-600 text-zinc-100 font-bold text-zinc-900 rounded-lg w-40 justify-center items-center text-white">{stats.isConnected ? stats.totalNamespaces : '--'}</dd>
                                 </dl>
                             </div>
                         </div>
@@ -382,12 +411,12 @@ const Dashboard: NextPage = () => {
                     <div className="p-5">
                         <div className="flex items-center">
                             <div className="flex-shrink-0">
-                                <IconLink size={24} stroke={1.8} className="text-purple-500" aria-hidden />
+                                <IconLink size={48} stroke={1.8} className="text-orange-300" aria-hidden />
                             </div>
                             <div className="ml-5 w-0 flex-1">
                                 <dl>
                                     <dt className="text-sm font-medium text-zinc-400 truncate">Relationships</dt>
-                                    <dd className="text-xl flex mt-1 p-1 bg-blue-900 rounded-lg w-40 justify-center items-center text-white">{stats.isConnected ? stats.totalRelationships : '--'}</dd>
+                                    <dd className="text-xl flex mt-1 p-1 bg-purple-600 text-zinc-100 font-bold rounded-lg w-40 justify-center items-center text-white">{stats.isConnected ? stats.totalRelationships : '--'}</dd>
                                 </dl>
                             </div>
                         </div>
@@ -398,12 +427,12 @@ const Dashboard: NextPage = () => {
                     <div className="p-5">
                         <div className="flex items-center">
                             <div className="flex-shrink-0">
-                                <IconUsers size={24} stroke={1.8} className="text-purple-500" aria-hidden />
+                                <IconUsers size={48} stroke={1.8} className="text-orange-300" aria-hidden />
                             </div>
                             <div className="ml-5 w-0 flex-1">
                                 <dl>
                                     <dt className="text-sm font-medium text-zinc-400 truncate">Subjects</dt>
-                                    <dd className="text-xl flex mt-1 p-1 bg-blue-900 rounded-lg w-40 justify-center items-center text-white">{stats.isConnected ? stats.totalSubjects : '--'}</dd>
+                                    <dd className="text-xl flex mt-1 p-1 bg-purple-600 text-zinc-100 font-bold rounded-lg w-40 justify-center items-center text-white">{stats.isConnected ? stats.totalSubjects : '--'}</dd>
                                 </dl>
                             </div>
                         </div>
@@ -414,12 +443,12 @@ const Dashboard: NextPage = () => {
                     <div className="p-5">
                         <div className="flex items-center">
                             <div className="flex-shrink-0">
-                                <IconHash size={24} stroke={1.8} className="text-purple-500" aria-hidden />
+                                <IconHash size={48} stroke={1.8} className="text-orange-300" aria-hidden />
                             </div>
                             <div className="ml-5 w-0 flex-1">
                                 <dl>
                                     <dt className="text-sm font-medium text-zinc-400 truncate">Schema Hash</dt>
-                                    <dd className="text-xl flex mt-1 p-1 bg-blue-900 rounded-lg w-40 justify-center items-center text-white">
+                                    <dd className="text-xl flex mt-1 p-1 bg-purple-600 text-zinc-100 font-bold rounded-lg w-40 justify-center items-center text-white">
                                         {stats.isConnected ? (stats.schemaHash ? stats.schemaHash.slice(0, 8) : 'N/A') : '--'}
                                     </dd>
                                 </dl>
@@ -432,12 +461,12 @@ const Dashboard: NextPage = () => {
                     <div className="p-5">
                         <div className="flex items-center">
                             <div className="flex-shrink-0">
-                                <IconClock size={24} stroke={1.8} className="text-purple-500" aria-hidden />
+                                <IconClock size={48} stroke={1.8} className="text-orange-300" aria-hidden />
                             </div>
                             <div className="ml-5 w-0 flex-1">
                                 <dl>
                                     <dt className="text-sm font-medium text-zinc-400 truncate">Average API Response</dt>
-                                    <dd className="text-xl flex mt-1 p-1 bg-blue-900 rounded-lg w-40 justify-center items-center text-white">
+                                    <dd className="text-xl flex mt-1 p-1 bg-purple-600 text-zinc-100 font-bold rounded-lg w-40 justify-center items-center text-white">
                                         {stats.isConnected ? (stats.apiResponseTime ? `${stats.apiResponseTime}ms` : 'N/A') : '--'}
                                     </dd>
                                 </dl>

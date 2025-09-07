@@ -179,8 +179,8 @@ async function getNamespaceRelationshipCounts(spicedbUrl, token, namespaceDetail
                 for (const line of lines) {
                     try {
                         const parsed = JSON.parse(line);
-                        if (parsed.relationship) {
-                            relationships.push(parsed.relationship);
+                        if (parsed.result && parsed.result.relationship) {
+                            relationships.push(parsed.result.relationship);
                         }
                     } catch (e) {
                         // Skip invalid lines

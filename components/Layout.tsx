@@ -200,7 +200,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                             <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-20">
                                                 <div className="py-1" role="menu">
                                                     <button
-                                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-purple-800"
                                                         onClick={() => {
                                                             console.log('Profile clicked');
                                                             setSettingsOpen(false);
@@ -211,7 +211,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                                     </button>
                                                     
                                                     <button
-                                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-purple-800"
                                                         onClick={() => {
                                                             console.log('Settings clicked');
                                                             setSettingsOpen(false);
@@ -224,7 +224,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                                     <hr className="my-1 border-gray-200" />
                                                     
                                                     <button
-                                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-purple-800"
                                                         onClick={() => {
                                                             window.open('https://github.com/your-repo', '_blank');
                                                             setSettingsOpen(false);
@@ -235,7 +235,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                                     </button>
                                                     
                                                     <button
-                                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-purple-800"
                                                         onClick={() => {
                                                             console.log('Help clicked');
                                                             setSettingsOpen(false);
@@ -248,7 +248,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                                     <hr className="my-1 border-gray-200" />
                                                     
                                                     <button
-                                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-purple-800"
                                                         onClick={() => {
                                                             console.log('Logout clicked');
                                                             setSettingsOpen(false);
