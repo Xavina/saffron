@@ -258,6 +258,56 @@ const CheckPage: NextPage = () => {
         }
     };
 
+    const getPermissionshipText = (p?: string) => {
+        switch (p) {
+            case "PERMISSIONSHIP_HAS_PERMISSION":
+                return "Permission Allowed";
+            case "PERMISSIONSHIP_NO_PERMISSION":
+                return "Permission Denied";
+            case "PERMISSIONSHIP_CONDITIONAL_PERMISSION":
+                return "Conditional Permission";
+            default:
+                return "Unknown";
+        }
+    };
+
+    const renderPermissionQuery = (query: string, permissionship: string) => {
+        // Parse query: "user:ceo → resource:promserver#view"
+        const parts = query.split(' → ');
+        if (parts.length !== 2) return <span className="font-mono text-sm">{query}</span>;
+
+        const subject = parts[0]; // "user:ceo"
+        const resourceAndPermission = parts[1]; // "resource:promserver#view"
+
+        const resourceMatch = resourceAndPermission.match(/^(.+?):(.+?)#(.+)$/);
+        if (!resourceMatch) return <span className="font-mono text-sm">{query}</span>;
+
+        const resourceType = resourceMatch[1]; // "resource"
+        const resourceId = resourceMatch[2]; // "promserver"
+        const permission = resourceMatch[3]; // "view"
+
+        const isAllowed = permissionship === "PERMISSIONSHIP_HAS_PERMISSION";
+        const permissionPillColor = isAllowed
+            ? "bg-green-100 text-green-800 border-green-200"
+            : "bg-red-100 text-red-800 border-red-200";
+
+        return (
+            <div className="flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 border-blue-200">
+                    {subject}
+                </span>
+                <span className="text-gray-400">→</span>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 border-purple-200">
+                    {resourceType}
+                </span>
+                <span className="text-gray-400">→</span>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium ${permissionPillColor}`}>
+                    {resourceId}#{permission}
+                </span>
+            </div>
+        );
+    };
+
     return (
         <div className="space-y-6">
             <div>
@@ -515,11 +565,13 @@ const CheckPage: NextPage = () => {
                 <div className="bg-white shadow rounded-lg">
                     <div className="px-4 py-5 sm:p-6">
                         <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Latest Result</h3>
-                        <div className={`inline-flex items-center px-3 py-1 rounded border ${getPermissionshipColor(result.permissionship)}`}>
+                        <div className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium mr-2 ${getPermissionshipColor(result.permissionship)}`}>
                             <span className="mr-2">{getPermissionshipIcon(result.permissionship)}</span>
-                            <span className="font-semibold">{result.permissionship}</span>
+                            <span className="font-semibold">{getPermissionshipText(result.permissionship)}</span>
                         </div>
-                        <p className="mt-2 text-sm text-gray-600">{result.query}</p>
+                        <div className="mt-4">
+                            {renderPermissionQuery(result.query, result.permissionship)}
+                        </div>
                     </div>
                 </div>
             )}

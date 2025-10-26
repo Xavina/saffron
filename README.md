@@ -243,10 +243,51 @@ The initialization scripts (`init-spicedb.sh` / `init-spicedb.ps1`) load a sampl
 
 ### 3. Authorization Testing
 
-- Use the **Check** page for permission testing:
-  - **Permission Check**: Test if a subject has permission on a resource
-  - **Expand Permission**: Visualize permission trees
-  - **Lookup Subjects**: Find all subjects with a specific permission
+Use the **Check** page for permission testing with the following features:
+- **Permission Check**: Test if a subject has permission on a resource
+- **Expand Permission**: Visualize permission trees
+- **Lookup Subjects**: Find all subjects with a specific permission
+
+#### Example Permission Checks (using mock data):
+
+**✅ Should ALLOW:**
+
+1. **CEO can admin org1**
+   - Resource: `organization:org1`
+   - Permission: `admin`
+   - Subject: `user:ceo`
+
+2. **Engineer can view promserver**
+   - Resource: `resource:promserver`
+   - Permission: `view`
+   - Subject: `user:an_engineer`
+
+3. **CTO can manage jira**
+   - Resource: `resource:jira`
+   - Permission: `manage`
+   - Subject: `user:cto`
+
+4. **External user can view promserver**
+   - Resource: `resource:promserver`
+   - Permission: `view`
+   - Subject: `user:an_external_user`
+
+**❌ Should DENY:**
+
+1. **External user cannot manage promserver**
+   - Resource: `resource:promserver`
+   - Permission: `manage`
+   - Subject: `user:an_external_user`
+
+2. **Villain cannot access jira**
+   - Resource: `resource:jira`
+   - Permission: `view`
+   - Subject: `user:a_villain`
+
+3. **Engineer cannot manage jira** (only view)
+   - Resource: `resource:jira`
+   - Permission: `manage`
+   - Subject: `user:an_engineer`
 
 ### 4. Terminal Usage
 
