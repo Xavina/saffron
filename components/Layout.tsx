@@ -137,7 +137,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         <div className={`flex items-center justify-center transition-all duration-200 ${collapsed ? 'w-8 h-8' : 'w-10 h-10'}`}>
                             <img src="/saffron.png" alt="Saffron logo" className={`transition-all duration-200 ${collapsed ? 'w-6 h-6' : 'w-8 h-8'}`} />
                         </div>
-                        {!collapsed && <span className="ml-2 text-3xl text-white-800 cursive">Saffron</span>}
+                        {!collapsed && <span className="ml-2 mt-3 text-3xl text-white-800 cursive">Saffron</span>}
                     </div>
                     {/* Collapse/Uncollapse */}
                     {!collapsed && (
@@ -174,7 +174,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         <div className="flex justify-between h-16">
 
                             {collapsed && (
-                                <div className="flex items-center pl-2 cursive">
+                                <div className="flex items-center ml-4 mt-2 cursive">
                                     Saffron
                                 </div>
                             )}
@@ -187,83 +187,49 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
                             <div className="flex items-center space-x-4">
                                 <div className="relative">
-                                    <button 
+                                    <button
                                         onClick={() => setSettingsOpen(!settingsOpen)}
                                         className="flex items-center text-gray-500 hover:text-gray-700 rounded-md p-2 hover:bg-gray-100 transition-colors"
                                     >
                                         <IconSettings size={20} />
                                         <IconChevronDown size={16} className="ml-1" />
                                     </button>
-                                    
+
                                     {settingsOpen && (
                                         <>
                                             {/* Backdrop to close dropdown when clicking outside */}
-                                            <div 
-                                                className="fixed inset-0 z-10" 
+                                            <div
+                                                className="fixed inset-0 z-10"
                                                 onClick={() => setSettingsOpen(false)}
                                             />
-                                            
+
                                             {/* Dropdown menu */}
                                             <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-20">
                                                 <div className="py-1" role="menu">
+
                                                     <button
                                                         className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-purple-800"
                                                         onClick={() => {
-                                                            console.log('Profile clicked');
-                                                            setSettingsOpen(false);
-                                                        }}
-                                                    >
-                                                        <IconUser size={18} className="mr-3" />
-                                                        Profile
-                                                    </button>
-                                                    
-                                                    <button
-                                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-purple-800"
-                                                        onClick={() => {
-                                                            console.log('Settings clicked');
-                                                            setSettingsOpen(false);
-                                                        }}
-                                                    >
-                                                        <IconSettings size={18} className="mr-3" />
-                                                        Settings
-                                                    </button>
-                                                    
-                                                    <hr className="my-1 border-gray-200" />
-                                                    
-                                                    <button
-                                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-purple-800"
-                                                        onClick={() => {
-                                                            window.open('https://github.com/your-repo', '_blank');
+                                                            window.open('https://github.com/dreaminhex/saffron', '_blank');
                                                             setSettingsOpen(false);
                                                         }}
                                                     >
                                                         <IconBrandGithub size={18} className="mr-3" />
-                                                        GitHub
+                                                        Saffron on GitHub
                                                     </button>
-                                                    
+
                                                     <button
                                                         className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-purple-800"
                                                         onClick={() => {
-                                                            console.log('Help clicked');
+                                                            window.open('https://github.com/dreaminhex/saffron/blob/main/README.md', '_blank');
                                                             setSettingsOpen(false);
                                                         }}
                                                     >
                                                         <IconHelp size={18} className="mr-3" />
                                                         Help & Documentation
                                                     </button>
-                                                    
-                                                    <hr className="my-1 border-gray-200" />
-                                                    
-                                                    <button
-                                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-purple-800"
-                                                        onClick={() => {
-                                                            console.log('Logout clicked');
-                                                            setSettingsOpen(false);
-                                                        }}
-                                                    >
-                                                        <IconLogout size={18} className="mr-3" />
-                                                        Logout
-                                                    </button>
+
+
                                                 </div>
                                             </div>
                                         </>

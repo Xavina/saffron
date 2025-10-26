@@ -1,9 +1,8 @@
-import { spawn } from "node:child_process";
-
 /**
- * Very small tokenizer: splits on spaces unless inside double quotes.
- * Example: `zed permission check "document:read me" view user:alice`
+ * Terminal API - Execute zed-like commands against SpiceDB
+ * Uses SpiceDB HTTP API instead of requiring zed CLI binary
  */
+
 function splitArgs(cmd) {
     const re = /[^\s"]+|"([^"]*)"/g;
     const out = [];
@@ -14,9 +13,80 @@ function splitArgs(cmd) {
     return out;
 }
 
-function hasDangerousChars(s) {
-    // prevent attempts to escape into the shell even though we use execFile/spawn
-    return /[;&|><`$]/.test(s);
+async function executeSchemaRead() {
+    const url = process.env.SPICEDB_URL || 'http://localhost:8443';
+    const token = process.env.SPICEDB_TOKEN || '';
+
+    const response = await fetch(`${url}/v1/schema/read`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: '{}'
+    });
+
+    const data = await response.json();
+    return data.schemaText || '';
+}
+
+async function executeRelationshipRead(resourceType, resourceId, relation, subjectType, subjectId) {
+    const url = process.env.SPICEDB_URL || 'http://localhost:8443';
+    const token = process.env.SPICEDB_TOKEN || '';
+
+    const filter = {};
+    if (resourceType) filter.resourceType = resourceType;
+    if (resourceId) filter.resourceId = resourceId;
+    if (relation) filter.relation = relation;
+    if (subjectType && subjectId) {
+        filter.subjectFilter = { subjectType, optionalSubjectId: subjectId };
+    }
+
+    const response = await fetch(`${url}/v1/relationships/read`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ relationshipFilter: filter })
+    });
+
+    const data = await response.json();
+    const relationships = [];
+
+    if (data.readRelationshipsResponseStream) {
+        for (const item of data.readRelationshipsResponseStream) {
+            if (item.relationship) {
+                const rel = item.relationship;
+                relationships.push(
+                    `${rel.resource?.objectType}:${rel.resource?.objectId}#${rel.relation}@${rel.subject?.object?.objectType}:${rel.subject?.object?.objectId}`
+                );
+            }
+        }
+    }
+
+    return relationships.length > 0 ? relationships.join('\n') : 'No relationships found';
+}
+
+async function executePermissionCheck(resourceType, resourceId, permission, subjectType, subjectId) {
+    const url = process.env.SPICEDB_URL || 'http://localhost:8443';
+    const token = process.env.SPICEDB_TOKEN || '';
+
+    const response = await fetch(`${url}/v1/permissions/check`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            resource: { objectType: resourceType, objectId: resourceId },
+            permission,
+            subject: { object: { objectType: subjectType, objectId: subjectId } }
+        })
+    });
+
+    const data = await response.json();
+    return `Permissionship: ${data.permissionship || 'UNKNOWN'}`;
 }
 
 export default async function handler(req, res) {
@@ -30,80 +100,85 @@ export default async function handler(req, res) {
         return res.status(400).json({ ok: false, error: "Command is required" });
     }
 
-    if (hasDangerousChars(command)) {
-        return res.status(400).json({ ok: false, error: "Disallowed characters in command" });
-    }
-
     const tokens = splitArgs(command.trim());
     if (tokens[0] !== "zed") {
         return res.status(400).json({ ok: false, error: 'Command must start with "zed"' });
     }
 
-    // TODO: lock this down further by whitelisting subcommands:
-    // const allowed = new Set(["schema", "permission", "relationship", "debug", "version"]);
-    // if (!allowed.has(tokens[1])) { ... }
-
-    // Inject endpoint/token if provided by env and not already present
-    const args = tokens.slice(1);
-    const hasEndpoint = args.includes("--endpoint");
-    const hasToken = args.includes("--token");
-    const injected = [...args];
-
-    const endpoint = process.env.SPICEDB_ENDPOINT;
-    const token = process.env.SPICEDB_TOKEN;
-    const insecure = process.env.SPICEDB_INSECURE === "true";
-
-    if (!hasEndpoint && endpoint) {
-        injected.push("--endpoint", endpoint);
-    }
-    if (!hasToken && token) {
-        injected.push("--token", token);
-    }
-    if (insecure && !injected.includes("--insecure")) {
-        injected.push("--insecure");
-    }
-
     const startedAt = Date.now();
+    let stdout = "";
+    let stderr = "";
 
     try {
-        const child = spawn("zed", injected, {
-            stdio: ["ignore", "pipe", "pipe"],
-            env: process.env, // inherit env so zed can also use ZED_* env vars if desired
-        });
+        const subcommand = tokens[1];
 
-        let stdout = "";
-        let stderr = "";
+        if (subcommand === "schema") {
+            const action = tokens[2];
+            if (action === "read") {
+                stdout = await executeSchemaRead();
+            } else {
+                stderr = `Unsupported schema action: ${action}. Try: zed schema read`;
+            }
+        } else if (subcommand === "relationship") {
+            const action = tokens[2];
+            if (action === "read") {
+                // Parse flags: --resource-type, --resource-id, --relation, --subject-type, --subject-id
+                let resourceType, resourceId, relation, subjectType, subjectId;
+                for (let i = 3; i < tokens.length; i++) {
+                    if (tokens[i] === '--resource-type') resourceType = tokens[++i];
+                    else if (tokens[i] === '--resource-id') resourceId = tokens[++i];
+                    else if (tokens[i] === '--relation') relation = tokens[++i];
+                    else if (tokens[i] === '--subject-type') subjectType = tokens[++i];
+                    else if (tokens[i] === '--subject-id') subjectId = tokens[++i];
+                }
+                stdout = await executeRelationshipRead(resourceType, resourceId, relation, subjectType, subjectId);
+            } else {
+                stderr = `Unsupported relationship action: ${action}. Try: zed relationship read --resource-type <type>`;
+            }
+        } else if (subcommand === "permission") {
+            const action = tokens[2];
+            if (action === "check") {
+                // Parse: zed permission check <resource-type>:<resource-id> <permission> <subject-type>:<subject-id>
+                const resource = tokens[3];
+                const permission = tokens[4];
+                const subject = tokens[5];
 
-        child.stdout.on("data", (d) => (stdout += d.toString()));
-        child.stderr.on("data", (d) => (stderr += d.toString()));
+                if (!resource || !permission || !subject) {
+                    stderr = 'Usage: zed permission check <resource-type>:<resource-id> <permission> <subject-type>:<subject-id>';
+                } else {
+                    const [resourceType, resourceId] = resource.split(':');
+                    const [subjectType, subjectId] = subject.split(':');
 
-        child.on("error", (err) => {
-            return res
-                .status(500)
-                .json({ ok: false, code: null, stdout, stderr, error: err.message });
-        });
+                    if (!resourceType || !resourceId || !subjectType || !subjectId) {
+                        stderr = 'Invalid format. Use type:id for resource and subject';
+                    } else {
+                        stdout = await executePermissionCheck(resourceType, resourceId, permission, subjectType, subjectId);
+                    }
+                }
+            } else {
+                stderr = `Unsupported permission action: ${action}. Try: zed permission check <resource> <permission> <subject>`;
+            }
+        } else {
+            stderr = `Unsupported command: ${subcommand}. Supported: schema, relationship, permission`;
+        }
 
-        child.on("close", (code) => {
-            const endedAt = Date.now();
-            const payload = {
-                ok: code === 0,
-                code,
-                stdout,
-                stderr,
-                startedAt: new Date(startedAt).toISOString(),
-                endedAt: new Date(endedAt).toISOString(),
-                durationMs: endedAt - startedAt,
-            };
-            // 2xx even on non-zero exit so client can show stderr nicely
-            return res.status(200).json(payload);
+        const endedAt = Date.now();
+        return res.status(200).json({
+            ok: stderr === "",
+            code: stderr === "" ? 0 : 1,
+            stdout,
+            stderr,
+            startedAt: new Date(startedAt).toISOString(),
+            endedAt: new Date(endedAt).toISOString(),
+            durationMs: endedAt - startedAt,
         });
     } catch (err) {
         return res.status(500).json({
             ok: false,
             code: null,
-            stdout: "",
-            stderr: "",
-            error: err?.message || "Failed to spawn zed",
+            stdout,
+            stderr: err?.message || "Command execution failed",
+            error: err?.message || "Failed to execute command",
         });
     }
 }

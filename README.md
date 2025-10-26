@@ -1,8 +1,13 @@
-# SpiceDB UI
+
+# The SpiceDB UI
+
 
 A modern web interface for managing SpiceDB authorization systems. Built with Next.js and Tailwind CSS.
 
+
 ## Screenshots
+
+_Screenshots coming soon!_
 
 ## Features
 
@@ -11,6 +16,23 @@ A modern web interface for managing SpiceDB authorization systems. Built with Ne
 1. **Relationship Management** - CRUD operations with smart dropdowns and search
 1. **Authorization Testing** - Permission checks, expansions, and subject lookups
 1. **Zed Terminal** - Run `zed` commands against the connected SpiceDB instance
+
+
+## Table of Contents
+
+1. [Screenshots](#screenshots)
+2. [Features](#features)
+3. [Prerequisites](#prerequisites)
+4. [Quick Start](#quick-start)
+5. [Configuration](#configuration)
+6. [Mock Data](#mock-data)
+7. [Usage](#usage)
+8. [API Endpoints](#api-endpoints)
+9. [Tech Stack](#tech-stack)
+10. [Troubleshooting](#troubleshooting)
+11. [Development](#development)
+12. [License](#license)
+13. [Links](#links)
 
 ## Prerequisites
 
@@ -108,7 +130,8 @@ For development, run SpiceDB in Docker but Saffron locally:
    npm run dev
    ```
 
-   The `.env.local` file is already configured to connect to `localhost:50051`
+
+   The `.env.local` file is already configured to connect to the correct SpiceDB HTTP and gRPC endpoints. If you change ports or run SpiceDB elsewhere, update this file accordingly.
 
    Open [http://localhost:7777](http://localhost:7777)
 
@@ -161,10 +184,12 @@ If you want to run SpiceDB without Docker Compose (requires manual PostgreSQL se
    SPICEDB_URL=http://localhost:8443
    SPICEDB_TOKEN=saffron-dev-key
 
-   # gRPC API (used by Terminal/Zed CLI)
+   # gRPC API (used only by the Terminal page for zed emulation)
    SPICEDB_ENDPOINT=localhost:50051
    SPICEDB_PRESHARED_KEY=saffron-dev-key
    SPICEDB_INSECURE=true
+
+   > **Note:** The UI itself uses only the HTTP API. The gRPC endpoint is used only for the Terminal page's zed command emulation. If you do not use the Terminal, you may ignore the gRPC settings.
    ```
 
 6. **Start the UI**
@@ -177,20 +202,20 @@ If you want to run SpiceDB without Docker Compose (requires manual PostgreSQL se
 
 ## Configuration
 
+
 ### Environment Variables
 
-Create a `.env.local` file in the root directory:
+Create a `.env.local` file in the root directory (see above for details). The default values are:
 
 ```bash
-# HTTP API (used by UI for schema, relationships, permissions)
 SPICEDB_URL=http://localhost:8443
 SPICEDB_TOKEN=saffron-dev-key
-
-# gRPC API (used by Terminal/Zed CLI)
 SPICEDB_ENDPOINT=localhost:50051
 SPICEDB_PRESHARED_KEY=saffron-dev-key
 SPICEDB_INSECURE=true
 ```
+
+> **Note:** If you do not set these, the backend will fall back to legacy/test defaults (`http://localhost:8080` and `somerandomkeyhere`), which may not work with your setup. Always use `.env.local` for local development.
 
 ### Docker Compose Services
 

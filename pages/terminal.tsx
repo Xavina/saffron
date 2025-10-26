@@ -2,6 +2,7 @@
 import type { NextPage } from "next";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Layout from "../components/Layout";
+import ConfirmDialog from "../components/ConfirmDialog";
 import {
     IconPlayerPlayFilled,
     IconTrash,
@@ -28,14 +29,15 @@ const HANDLE_HEIGHT = 5;
 const TerminalPage: NextPage = () => {
     const containerRef = useRef<HTMLDivElement | null>(null);
 
-    // 65% top to start; we store fraction (0..1) and compute px from container height.
-    const [topFrac, setTopFrac] = useState(0.65);
+    // 35% top to start; we store fraction (0..1) and compute px from container height.
+    const [topFrac, setTopFrac] = useState(0.35);
     const [containerH, setContainerH] = useState(0);
     const [dragging, setDragging] = useState(false);
 
     const [command, setCommand] = useState<string>("zed schema read");
     const [result, setResult] = useState<TerminalResponse | null>(null);
     const [isRunning, setIsRunning] = useState(false);
+    const [showCopyDialog, setShowCopyDialog] = useState(false);
 
     const updateContainerH = useCallback(() => {
         if (containerRef.current) setContainerH(containerRef.current.clientHeight);
@@ -116,6 +118,7 @@ const TerminalPage: NextPage = () => {
     const copyOut = async () => {
         try {
             await navigator.clipboard.writeText(outputText || "");
+            setShowCopyDialog(true);
         } catch { }
     };
 
@@ -129,6 +132,17 @@ const TerminalPage: NextPage = () => {
     return (
         <>
             <div className="space-y-6">
+                {/* Copy acknowledgement dialog */}
+                <ConfirmDialog
+                    isOpen={showCopyDialog}
+                    title="Copied"
+                    message="Results copied to the clipboard."
+                    confirmText="Ok"
+                    cancelText=""
+                    onConfirm={() => setShowCopyDialog(false)}
+                    onCancel={() => setShowCopyDialog(false)}
+                    variant="info"
+                />
                 <div className="flex justify-between items-center">
                     <div>
                         <h2 className="inline-flex items-center gap-2 text-2xl font-bold text-gray-900">
@@ -185,7 +199,7 @@ const TerminalPage: NextPage = () => {
                         onChange={(e) => setCommand(e.target.value)}
                         onKeyDown={onKeyDown}
                         placeholder='Type a "zed" command, e.g. zed schema read'
-                        className="w-full h-full p-4 bg-gray-50 border-b border-gray-200 font-mono text-sm focus:ring-0 focus:outline-none resize-none"
+                        className="w-full h-full p-4 bg-terminal-upper border-b border-gray-200 font-mono text-sm focus:ring-0 focus:outline-none resize-none"
                         style={{ fontFamily: 'Monaco, Consolas, "Courier New", monospace' }}
                         spellCheck={false}
                     />
@@ -210,7 +224,7 @@ const TerminalPage: NextPage = () => {
                     <textarea
                         readOnly
                         value={outputText}
-                        className="w-full h-full p-4 bg-gray-50 font-mono text-sm focus:ring-0 focus:outline-none resize-none"
+                        className="w-full h-full p-4 bg-terminal-lower font-mono text-sm resize-none"
                         style={{ fontFamily: 'Monaco, Consolas, "Courier New", monospace' }}
                         spellCheck={false}
                     />
