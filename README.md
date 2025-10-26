@@ -5,9 +5,22 @@
 A modern web interface for managing SpiceDB authorization systems. Built with Next.js and Tailwind CSS.
 
 
+
 ## Screenshots
 
-_Screenshots coming soon!_
+<div align="center">
+   <img src="/screenshots/saffron_1.png" alt="Dashboard" width="700" />
+   <br />
+   <img src="/screenshots/saffron_2.png" alt="Schema Editor" width="700" />
+   <br />
+   <img src="/screenshots/saffron_3.png" alt="Relationships" width="700" />
+   <br />
+   <img src="/screenshots/saffron_4.png" alt="Permission Check" width="700" />
+   <br />
+   <img src="/screenshots/saffron_5.png" alt="Terminal" width="700" />
+   <br />
+   <img src="/screenshots/saffron_6.png" alt="Settings or Misc" width="700" />
+</div>
 
 ## Features
 
