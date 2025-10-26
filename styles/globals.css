@@ -37,7 +37,7 @@ body {
 }
 
 .cursive {
-  font-family: "Leckerli One", cursive;
+  font-family: "Great Vibes", cursive;
   font-weight: 400;
   font-style: normal;
 }
@@ -65,6 +65,10 @@ body {
 
   .text-gray-500 {
     color: #9ca3af !important;
+  }
+
+  .text-gray-200 {
+    color: #434750 !important;
   }
 
   .text-gray-400 {
@@ -236,5 +240,31 @@ body {
   pre {
     background-color: #1f2937 !important;
     color: #f9fafb !important;
+  }
+
+  /* Custom scrollbar styles */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(31, 41, 55, 0.5);
+    border-radius: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(75, 85, 99, 0.8);
+    border-radius: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(107, 114, 128, 0.9);
+  }
+
+  /* Firefox */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(75, 85, 99, 0.8) rgba(31, 41, 55, 0.5);
   }
 }

@@ -400,7 +400,7 @@ const Dashboard: NextPage = () => {
                             <div className="ml-5 w-0 flex-1">
                                 <dl>
                                     <dt className="text-sm font-medium text-zinc-400 truncate">Namespaces</dt>
-                                    <dd className="text-xl flex mt-1 p-1 bg-purple-600 text-zinc-100 font-bold text-zinc-900 rounded-lg w-40 justify-center items-center text-white">{stats.isConnected ? stats.totalNamespaces : '--'}</dd>
+                                    <dd className="text-xl flex mt-1 p-1 bg-purple-600 text-zinc-100 font-bold text-zinc-100 rounded-lg w-40 justify-center items-center text-white">{stats.isConnected ? stats.totalNamespaces : '--'}</dd>
                                 </dl>
                             </div>
                         </div>

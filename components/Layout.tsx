@@ -29,15 +29,22 @@ interface NavItem {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-    const [collapsed, setCollapsed] = useState<boolean>(() => {
-        if (typeof window === "undefined") return false;
-        return localStorage.getItem("saffron.sidebar") === "collapsed";
-    });
+    const [collapsed, setCollapsed] = useState<boolean>(false); // Always start with false for SSR
+    const [isHydrated, setIsHydrated] = useState(false);
 
     useEffect(() => {
-        if (typeof window === "undefined") return;
+        // This runs only on client after hydration
+        setIsHydrated(true);
+        const savedState = localStorage.getItem("saffron.sidebar");
+        if (savedState === "collapsed") {
+            setCollapsed(true);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!isHydrated) return; // Don't save to localStorage until hydrated
         localStorage.setItem("saffron.sidebar", collapsed ? "collapsed" : "expanded");
-    }, [collapsed]);
+    }, [collapsed, isHydrated]);
 
     // Mobile drawer
     const [mobileOpen, setMobileOpen] = useState(false);
@@ -106,7 +113,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                             <div className="w-10 h-10 flex items-center justify-center">
                                 <img src="/saffron.png" alt="Saffron logo" className="w-8 h-8" />
                             </div>
-                            <span className="text-lg text-white-800 cursive">Saffron</span>
+                            <span className="text-xl text-purple-800 cursive">Saffron</span>
                         </div>
                         <button
                             onClick={() => setMobileOpen(false)}
@@ -146,7 +153,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     {collapsed && (
                         <button
                             onClick={() => setCollapsed((v) => !v)}
-                            className="ml-5 p-0 rounded-md text-gray-500 hover:text-gray-700"
+                            className="ml-8 p-0 rounded-md text-gray-500 hover:text-gray-700"
                             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
                         >
                             <span aria-hidden><IconLayoutSidebarRightCollapse /></span>
@@ -167,14 +174,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         <div className="flex justify-between h-16">
 
                             {collapsed && (
-                                <div className="flex items-center pl-4">
-                                    Reserved Space
+                                <div className="flex items-center pl-2 cursive">
+                                    Saffron
                                 </div>
                             )}
 
                             {!collapsed && (
                                 <div className="flex items-center">
-                                    Reserved Space
+                                    &nbsp;
                                 </div>
                             )}
 

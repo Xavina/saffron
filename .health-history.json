@@ -2,45 +2,45 @@
   "history": [
     {
       "connected": true,
-      "responseTime": 8,
-      "timestamp": "2025-09-07T17:49:11.460Z",
-      "id": 1757267351467,
+      "responseTime": 16,
+      "timestamp": "2025-10-26T02:21:17.823Z",
+      "id": 1761445277844,
       "type": "reconnected",
       "title": "Connection Restored",
       "description": "Successfully reconnected to SpiceDB"
     },
     {
       "connected": false,
-      "responseTime": null,
-      "timestamp": "2025-09-07T16:24:47.743Z",
-      "id": 1757262287803,
+      "responseTime": 17,
+      "timestamp": "2025-10-26T02:21:17.802Z",
+      "id": 1761445277842,
       "type": "disconnected",
       "title": "Connection Lost",
       "description": "Unable to reach SpiceDB"
     },
     {
       "connected": true,
-      "responseTime": 8,
-      "timestamp": "2025-09-07T16:24:17.758Z",
-      "id": 1757262257765,
+      "responseTime": 1,
+      "timestamp": "2025-10-26T02:21:00.139Z",
+      "id": 1761445260153,
       "type": "reconnected",
       "title": "Connection Restored",
       "description": "Successfully reconnected to SpiceDB"
     },
     {
       "connected": false,
-      "responseTime": 14,
-      "timestamp": "2025-09-07T16:23:47.873Z",
-      "id": 1757262227892,
+      "responseTime": 3,
+      "timestamp": "2025-10-26T02:21:00.132Z",
+      "id": 1761445260142,
       "type": "disconnected",
       "title": "Connection Lost",
       "description": "Unable to reach SpiceDB"
     },
     {
       "connected": true,
-      "responseTime": 5,
-      "timestamp": "2025-09-06T00:20:26.539Z",
-      "id": 1757118026556,
+      "responseTime": 7,
+      "timestamp": "2025-10-26T02:21:00.121Z",
+      "id": 1761445260129,
       "type": "reconnected",
       "title": "Connection Restored",
       "description": "Successfully reconnected to SpiceDB"
