@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Layout from "../components/Layout";
 import { IconAlertHexagon, IconCircleCheck, IconLink, IconReload, IconTrash, IconUsersPlus } from "@tabler/icons-react";
 import Warning from "@/components/Warning";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 type Relationship = {
     id: string;
@@ -25,6 +26,7 @@ const Relationships: NextPage = () => {
     const [newRelationship, setNewRelationship] = useState<NewRelationship>({ resource: "", relation: "", subject: "" });
     const [error, setError] = useState<string>("");
     const [success, setSuccess] = useState<string>("");
+    const [relationshipToDelete, setRelationshipToDelete] = useState<Relationship | null>(null);
 
     useEffect(() => {
         loadResources();
@@ -139,20 +141,24 @@ const Relationships: NextPage = () => {
         }
     };
 
-    const deleteRelationship = async (rel: Relationship) => {
-        if (!confirm("Are you sure you want to delete this relationship?")) return;
+    const confirmDelete = async () => {
+        if (!relationshipToDelete) return;
+
         setIsLoading(true);
+        setRelationshipToDelete(null);
+
         try {
             await fetch(`/api/spicedb/relationships`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    resourceType: rel.resource.type,
-                    resourceId: rel.resource.id,
-                    subjectType: rel.subject.type,
-                    subjectId: rel.subject.id,
+                    resourceType: relationshipToDelete.resource.type,
+                    resourceId: relationshipToDelete.resource.id,
+                    subjectType: relationshipToDelete.subject.type,
+                    subjectId: relationshipToDelete.subject.id,
                 }),
             });
+            setSuccess("Relationship deleted successfully");
             loadRelationships();
         } catch {
             setError("Failed to delete relationship");
@@ -295,7 +301,7 @@ const Relationships: NextPage = () => {
                                                 {new Date(rel.createdAt).toLocaleDateString()}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <button onClick={() => deleteRelationship(rel)} className="text-red-600 hover:text-red-900 inline-flex items-center gap-1">
+                                                <button onClick={() => setRelationshipToDelete(rel)} className="text-red-600 hover:text-red-900 inline-flex items-center gap-1">
                                                     <IconTrash size={16} />
                                                     <span>Delete</span>
                                                 </button>
@@ -318,6 +324,17 @@ const Relationships: NextPage = () => {
                     )}
                 </div>
             </div>
+
+            <ConfirmDialog
+                isOpen={relationshipToDelete !== null}
+                title="Delete Relationship"
+                message={relationshipToDelete ? `Are you sure you want to delete the relationship between ${relationshipToDelete.resource.type}:${relationshipToDelete.resource.id} and ${relationshipToDelete.subject.type}:${relationshipToDelete.subject.id}? This action cannot be undone.` : ''}
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="danger"
+                onConfirm={confirmDelete}
+                onCancel={() => setRelationshipToDelete(null)}
+            />
 
             {showAddModal && (
                 <div className="fixed inset-0 z-50 overflow-y-auto">

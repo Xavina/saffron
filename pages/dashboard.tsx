@@ -586,7 +586,7 @@ const Dashboard: NextPage = () => {
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2">
                             {stats.namespacesWithRelationCounts.map((ns) => (
                                 <div key={ns.namespace} className="border border-gray-600 rounded-lg bg-gray-750 p-4">
-                                    <h4 className="font-medium text-white mb-2">{ns.namespace}</h4>
+                                    <h4 className="font-medium text-white mb-2 p-2 bg-blue-100 text-zinc-100 font-bold rounded-md justify-center items-center text-white">{ns.namespace}</h4>
                                     <div className="space-y-1 text-sm text-gray-400">
                                         <div>Relationships: <span className="font-medium text-white">{ns.relationshipCount}</span></div>
                                         <div>Subjects: <span className="font-medium text-white">{ns.subjectCount}</span></div>
