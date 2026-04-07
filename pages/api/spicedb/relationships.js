@@ -1,236 +1,261 @@
+import { v1 } from '@authzed/authzed-node';
+import { getSpiceDbPromiseClient, mapGrpcError, toObjectReference, toSubjectReference } from '../../../lib/spicedb';
+
+const PAGE_SIZE = 100;
+
 export default async function handler(req, res) {
-    const spicedbUrl = process.env.SPICEDB_URL || 'http://localhost:8080';
-    const token = process.env.SPICEDB_TOKEN || 'somerandomkeyhere';
+    const client = getSpiceDbPromiseClient();
 
     if (req.method === 'GET') {
         try {
-            // Get query parameters for filtering
-            const { resource_type, resource_id, relation, subject_type, subject_id } = req.query;
+            const { resource_type, resource_id, relation, subject_type, subject_id, cursor } = req.query;
 
-            let allRelationships = [];
+            const page = resource_type
+                ? await fetchRelationshipsPageForType(client, {
+                    resourceType: resource_type,
+                    resourceId: resource_id,
+                    relation,
+                    subjectType: subject_type,
+                    subjectId: subject_id,
+                    cursor,
+                })
+                : await fetchRelationshipsPageAcrossTypes(client, cursor);
 
-            if (resource_type) {
-                // If a specific resource type is requested, filter by it
-                const relationships = await fetchRelationshipsForType(spicedbUrl, token, resource_type, resource_id, relation, subject_type, subject_id);
-                allRelationships = relationships;
-            } else {
-                // If no specific type, we need to get all relationships by querying each known type
-                // First, let's get the schema to know what types exist
-                try {
-                    const schemaResponse = await fetch(`${spicedbUrl}/v1/schema/read`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`,
-                        },
-                        body: JSON.stringify({})
-                    });
-
-                    if (schemaResponse.ok) {
-                        const schemaData = await schemaResponse.json();
-                        const resourceTypes = extractResourceTypesFromSchema(schemaData.schemaText || '');
-
-                        // Fetch relationships for each resource type
-                        for (const type of resourceTypes) {
-                            try {
-                                const relationships = await fetchRelationshipsForType(spicedbUrl, token, type);
-                                allRelationships = allRelationships.concat(relationships);
-                            } catch (error) {
-                                console.log(`No relationships found for type ${type}:`, error.message);
-                                // Continue with other types
-                            }
-                        }
-                    } else {
-                        // If we can't get schema, try common types
-                        const commonTypes = ['user', 'business', 'system', 'document', 'organization', 'folder'];
-                        for (const type of commonTypes) {
-                            try {
-                                const relationships = await fetchRelationshipsForType(spicedbUrl, token, type);
-                                allRelationships = allRelationships.concat(relationships);
-                            } catch (error) {
-                                // Ignore errors for types that don't exist
-                            }
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error fetching schema for relationship types:', error);
-                }
-            }
-
-            res.status(200).json({ relationships: allRelationships });
-
+            return res.status(200).json(page);
         } catch (error) {
             console.error('Relationships read API error:', error);
-            res.status(500).json({
-                message: 'Internal server error',
-                error: error.message
+            return res.status(500).json({
+                message: mapGrpcError(error).message,
+                error: error.message,
+                code: error.code,
             });
         }
     }
-    else if (req.method === 'POST') {
+
+    if (req.method === 'POST') {
         try {
-            const body = req.body;
+            const body = req.body || {};
 
-            console.log(body);
-            console.log("1st", body.resource && body.relation && body.subject)
-            console.log("2nd", body.resourceType && body.resourceId && body.subjectType && body.subjectId)
-
-            // Check if it's a write operation (has resource, relation, subject)
             if (body.resource && body.relation && body.subject) {
-                const { resource, relation, subject } = body;
-
-                const response = await fetch(`${spicedbUrl}/v1/relationships/write`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({
-                        updates: [{
-                            operation: 'OPERATION_CREATE',
-                            relationship: { resource, relation, subject }
-                        }]
-                    })
+                const request = v1.WriteRelationshipsRequest.create({
+                    updates: [
+                        v1.RelationshipUpdate.create({
+                            operation: v1.RelationshipUpdate_Operation.CREATE,
+                            relationship: v1.Relationship.create({
+                                resource: toObjectReference(body.resource),
+                                relation: body.relation,
+                                subject: toSubjectReference(body.subject),
+                            }),
+                        }),
+                    ],
                 });
 
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    return res.status(response.status).json({
-                        message: `SpiceDB error: ${errorText}`
-                    });
-                }
-
-                const data = await response.json();
+                const data = await client.writeRelationships(request);
                 return res.status(200).json(data);
             }
 
-            // Check if it's a delete operation (has resourceType, resourceId, etc.)
-            else if (body.resourceType && body.resourceId && body.subjectType && body.subjectId) {
-                const { resourceType, resourceId, subjectType, subjectId } = body;
-
-                const response = await fetch(`${spicedbUrl}/v1/relationships/delete`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({
-                        "relationshipFilter": {
-                            "resourceType": resourceType,
-                            "optionalResourceId": resourceId,
-                            "optionalSubjectFilter": {
-                                "subjectType": subjectType,
-                                "optionalSubjectId": subjectId
-                            }
-                        }
-                    })
+            if (body.resourceType && body.resourceId && body.subjectType && body.subjectId) {
+                const request = v1.DeleteRelationshipsRequest.create({
+                    relationshipFilter: v1.RelationshipFilter.create({
+                        resourceType: body.resourceType,
+                        optionalResourceId: body.resourceId,
+                        optionalSubjectFilter: v1.SubjectFilter.create({
+                            subjectType: body.subjectType,
+                            optionalSubjectId: body.subjectId,
+                        }),
+                    }),
                 });
 
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    return res.status(response.status).json({
-                        message: `SpiceDB error: ${errorText}`
-                    });
-                }
-
-                const data = await response.json();
+                const data = await client.deleteRelationships(request);
                 return res.status(200).json(data);
             }
 
-            else {
-                return res.status(400).json({
-                    message: 'Invalid request body. Expected either (resource, relation, subject) for write or (resourceType, resourceId, subjectType, subjectId) for delete'
-                });
-            }
-
+            return res.status(400).json({
+                message: 'Invalid request body. Expected either (resource, relation, subject) for write or (resourceType, resourceId, subjectType, subjectId) for delete',
+            });
         } catch (error) {
             console.error('Relationships API error:', error);
-            res.status(500).json({
-                message: 'Internal server error',
-                error: error.message
+            return res.status(500).json({
+                message: mapGrpcError(error).message,
+                error: error.message,
+                code: error.code,
             });
         }
     }
-    else {
-        res.status(405).json({ message: 'Method not allowed' });
+
+    return res.status(405).json({ message: 'Method not allowed' });
+}
+
+function encodeCursor(payload) {
+    return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64');
+}
+
+function decodeCursor(cursor) {
+    if (!cursor) {
+        return null;
+    }
+
+    try {
+        const decoded = Buffer.from(String(cursor), 'base64').toString('utf8');
+        return JSON.parse(decoded);
+    } catch {
+        return null;
     }
 }
 
-// Helper function to fetch relationships for a specific resource type
-async function fetchRelationshipsForType(spicedbUrl, token, resourceType, resourceId = null, relation = null, subjectType = null, subjectId = null) {
-    const relationshipFilter = {
-        resourceType: resourceType
-    };
+async function fetchRelationshipsPageForType(client, {
+    resourceType,
+    resourceId = null,
+    relation = null,
+    subjectType = null,
+    subjectId = null,
+    cursor = null,
+}) {
+    const decodedCursor = decodeCursor(cursor);
+    const cursorToken = decodedCursor?.kind === 'type' && decodedCursor.resourceType === resourceType
+        ? decodedCursor.token
+        : null;
 
-    if (resourceId) {
-        relationshipFilter.optionalResourceId = resourceId;
-    }
-
-    if (relation) {
-        relationshipFilter.optionalRelation = relation;
-    }
-
-    if (subjectType || subjectId) {
-        relationshipFilter.optionalSubjectFilter = {
-            subjectType: subjectType || '',
-        };
-        if (subjectId) {
-            relationshipFilter.optionalSubjectFilter.optionalSubjectId = subjectId;
-        }
-    }
-
-    const response = await fetch(`${spicedbUrl}/v1/relationships/read`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-            relationshipFilter: relationshipFilter
-        })
+    const relationshipFilter = v1.RelationshipFilter.create({
+        resourceType,
+        ...(resourceId ? { optionalResourceId: resourceId } : {}),
+        ...(relation ? { optionalRelation: relation } : {}),
+        ...(subjectType || subjectId
+            ? {
+                optionalSubjectFilter: v1.SubjectFilter.create({
+                    subjectType: subjectType || '',
+                    ...(subjectId ? { optionalSubjectId: subjectId } : {}),
+                }),
+            }
+            : {}),
     });
 
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`SpiceDB error: ${errorText}`);
+    const request = v1.ReadRelationshipsRequest.create({
+        relationshipFilter,
+        optionalLimit: PAGE_SIZE,
+        ...(cursorToken ? { optionalCursor: v1.Cursor.create({ token: cursorToken }) } : {}),
+    });
+    const results = await client.readRelationships(request);
+
+    const lastResult = results.at(-1);
+    const nextToken = lastResult?.afterResultCursor?.token || null;
+
+    return {
+        relationships: results
+            .map((result) => result.relationship)
+            .filter(Boolean)
+            .map(transformRelationship),
+        pageSize: PAGE_SIZE,
+        nextCursor: nextToken
+            ? encodeCursor({ kind: 'type', resourceType, token: nextToken })
+            : null,
+        hasNextPage: Boolean(nextToken),
+    };
+}
+
+async function fetchRelationshipsPageAcrossTypes(client, cursor = null) {
+    const resourceTypes = await getResourceTypes(client);
+    const decodedCursor = decodeCursor(cursor);
+
+    let startIndex = 0;
+    let startToken = null;
+
+    if (decodedCursor?.kind === 'all' && decodedCursor.resourceType) {
+        const matchedIndex = resourceTypes.indexOf(decodedCursor.resourceType);
+        if (matchedIndex >= 0) {
+            startIndex = matchedIndex;
+            startToken = decodedCursor.token || null;
+        }
     }
 
     const relationships = [];
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
+    for (let index = startIndex; index < resourceTypes.length && relationships.length < PAGE_SIZE; index += 1) {
+        const resourceType = resourceTypes[index];
+        const remaining = PAGE_SIZE - relationships.length;
+        const page = await fetchTypeSlice(client, {
+            resourceType,
+            limit: remaining + 1,
+            cursorToken: index === startIndex ? startToken : null,
+        });
 
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        if (page.relationships.length === 0) {
+            continue;
+        }
 
-        buffer += decoder.decode(value, { stream: true });
+        if (page.relationships.length > remaining) {
+            relationships.push(...page.relationships.slice(0, remaining).map(transformRelationship));
+            return {
+                relationships,
+                pageSize: PAGE_SIZE,
+                nextCursor: encodeCursor({
+                    kind: 'all',
+                    resourceType,
+                    token: page.results[remaining - 1]?.afterResultCursor?.token || null,
+                }),
+                hasNextPage: true,
+            };
+        }
 
-        let boundary;
-        while ((boundary = buffer.indexOf('\n')) >= 0) {
-            const chunk = buffer.slice(0, boundary).trim();
-            buffer = buffer.slice(boundary + 1);
+        relationships.push(...page.relationships.map(transformRelationship));
 
-            if (chunk) {
-                try {
-                    const parsed = JSON.parse(chunk);
-                    const rel = parsed.result?.relationship;
-                    if (rel) {
-                        relationships.push(transformRelationship(rel));
-                    }
-                } catch (err) {
-                    console.warn('Error parsing JSON chunk:', err);
-                }
-            }
+        if (relationships.length === PAGE_SIZE) {
+            const nextCursor = await findNextCursorForTypes(client, resourceTypes, index + 1);
+            return {
+                relationships,
+                pageSize: PAGE_SIZE,
+                nextCursor,
+                hasNextPage: Boolean(nextCursor),
+            };
         }
     }
 
-    return relationships;
+    return {
+        relationships,
+        pageSize: PAGE_SIZE,
+        nextCursor: null,
+        hasNextPage: false,
+    };
 }
 
+async function fetchTypeSlice(client, { resourceType, limit, cursorToken = null }) {
+    const request = v1.ReadRelationshipsRequest.create({
+        relationshipFilter: v1.RelationshipFilter.create({ resourceType }),
+        optionalLimit: limit,
+        ...(cursorToken ? { optionalCursor: v1.Cursor.create({ token: cursorToken }) } : {}),
+    });
 
-// Helper function to extract resource types from schema
+    const results = await client.readRelationships(request);
+
+    return {
+        results,
+        relationships: results.map((result) => result.relationship).filter(Boolean),
+    };
+}
+
+async function findNextCursorForTypes(client, resourceTypes, startIndex) {
+    for (let index = startIndex; index < resourceTypes.length; index += 1) {
+        const resourceType = resourceTypes[index];
+        const page = await fetchTypeSlice(client, { resourceType, limit: 1 });
+
+        if (page.relationships.length > 0) {
+            return encodeCursor({ kind: 'all', resourceType, token: null });
+        }
+    }
+
+    return null;
+}
+
+async function getResourceTypes(client) {
+    try {
+        const schemaData = await client.readSchema(v1.ReadSchemaRequest.create({}));
+        return extractResourceTypesFromSchema(schemaData.schemaText || '').sort();
+    } catch (error) {
+        console.error('Error fetching schema for relationship types:', error);
+        return ['user', 'business', 'system', 'document', 'organization', 'folder'];
+    }
+}
+
 function extractResourceTypesFromSchema(schemaText) {
     const definitionRegex = /definition\s+(\w+)\s*{/g;
     const types = [];
@@ -243,20 +268,19 @@ function extractResourceTypesFromSchema(schemaText) {
     return types;
 }
 
-// Helper function to transform SpiceDB relationship format to our UI format
 function transformRelationship(spicedbRel) {
     return {
         id: `${spicedbRel.resource.objectType}:${spicedbRel.resource.objectId}#${spicedbRel.relation}@${spicedbRel.subject.object.objectType}:${spicedbRel.subject.object.objectId}`,
         resource: {
             type: spicedbRel.resource.objectType,
-            id: spicedbRel.resource.objectId
+            id: spicedbRel.resource.objectId,
         },
         relation: spicedbRel.relation,
         subject: {
             type: spicedbRel.subject.object.objectType,
             id: spicedbRel.subject.object.objectId,
-            ...(spicedbRel.subject.optionalRelation && { relation: spicedbRel.subject.optionalRelation })
+            ...(spicedbRel.subject.optionalRelation ? { relation: spicedbRel.subject.optionalRelation } : {}),
         },
-        createdAt: new Date().toISOString() // SpiceDB doesn't provide creation time in read response
+        createdAt: new Date().toISOString(),
     };
 }

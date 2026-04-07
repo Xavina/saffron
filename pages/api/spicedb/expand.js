@@ -1,3 +1,6 @@
+import { v1 } from '@authzed/authzed-node';
+import { getSpiceDbPromiseClient, mapGrpcError, toObjectReference } from '../../../lib/spicedb';
+
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ message: 'Method not allowed' });
@@ -13,40 +16,21 @@ export default async function handler(req, res) {
             });
         }
 
-        // SpiceDB API endpoint - adjust URL as needed
-        const spicedbUrl = process.env.SPICEDB_URL || 'http://localhost:8080';
-        const token = process.env.SPICEDB_TOKEN || 'somerandomkeyhere';
-
-        const requestBody = {
-            resource,
+        const client = getSpiceDbPromiseClient();
+        const request = v1.ExpandPermissionTreeRequest.create({
+            resource: toObjectReference(resource),
             permission,
-            ...(context && { context })
-        };
-
-        const response = await fetch(`${spicedbUrl}/v1/permissions/expand`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-            },
-            body: JSON.stringify(requestBody)
         });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            return res.status(response.status).json({
-                message: `SpiceDB error: ${errorText}`
-            });
-        }
-
-        const data = await response.json();
+        const data = await client.expandPermissionTree(request);
         res.status(200).json(data);
 
     } catch (error) {
         console.error('Expand API error:', error);
         res.status(500).json({
-            message: 'Internal server error',
-            error: error.message
+            message: mapGrpcError(error).message,
+            error: error.message,
+            code: error.code,
         });
     }
 }

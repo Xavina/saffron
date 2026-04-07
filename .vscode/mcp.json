@@ -1,0 +1,8 @@
+{
+	"servers": {
+		"AuthZed": {
+			"url": "https://mcp.authzed.com",
+			"type": "http"
+		}
+	}
+}
