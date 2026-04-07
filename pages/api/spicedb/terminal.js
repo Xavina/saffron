@@ -1,7 +1,5 @@
-/**
- * Terminal API - Execute zed-like commands against SpiceDB
- * Uses SpiceDB HTTP API instead of requiring zed CLI binary
- */
+import { v1 } from '@authzed/authzed-node';
+import { getSpiceDbPromiseClient } from '../../../lib/spicedb';
 
 function splitArgs(cmd) {
     const re = /[^\s"]+|"([^"]*)"/g;
@@ -13,117 +11,87 @@ function splitArgs(cmd) {
     return out;
 }
 
-async function executeSchemaRead() {
-    const url = process.env.SPICEDB_URL || 'http://localhost:8443';
-    const token = process.env.SPICEDB_TOKEN || '';
-
-    const response = await fetch(`${url}/v1/schema/read`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-        },
-        body: '{}'
-    });
-
-    const data = await response.json();
-    return data.schemaText || '';
+async function executeSchemaRead(client) {
+    const response = await client.readSchema(v1.ReadSchemaRequest.create({}));
+    return response.schemaText || '';
 }
 
-async function executeRelationshipRead(resourceType, resourceId, relation, subjectType, subjectId) {
-    const url = process.env.SPICEDB_URL || 'http://localhost:8443';
-    const token = process.env.SPICEDB_TOKEN || '';
-
-    const filter = {};
-    if (resourceType) filter.resourceType = resourceType;
-    if (resourceId) filter.resourceId = resourceId;
-    if (relation) filter.relation = relation;
-    if (subjectType && subjectId) {
-        filter.subjectFilter = { subjectType, optionalSubjectId: subjectId };
-    }
-
-    const response = await fetch(`${url}/v1/relationships/read`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ relationshipFilter: filter })
+async function executeRelationshipRead(client, resourceType, resourceId, relation, subjectType, subjectId) {
+    const relationshipFilter = v1.RelationshipFilter.create({
+        ...(resourceType ? { resourceType } : {}),
+        ...(resourceId ? { optionalResourceId: resourceId } : {}),
+        ...(relation ? { optionalRelation: relation } : {}),
+        ...(subjectType
+            ? {
+                optionalSubjectFilter: v1.SubjectFilter.create({
+                    subjectType,
+                    ...(subjectId ? { optionalSubjectId: subjectId } : {}),
+                }),
+            }
+            : {}),
     });
 
-    const data = await response.json();
-    const relationships = [];
+    const data = await client.readRelationships(v1.ReadRelationshipsRequest.create({ relationshipFilter }));
 
-    if (data.readRelationshipsResponseStream) {
-        for (const item of data.readRelationshipsResponseStream) {
-            if (item.relationship) {
-                const rel = item.relationship;
-                relationships.push(
-                    `${rel.resource?.objectType}:${rel.resource?.objectId}#${rel.relation}@${rel.subject?.object?.objectType}:${rel.subject?.object?.objectId}`
-                );
-            }
-        }
-    }
+    const relationships = data
+        .map((item) => item.relationship)
+        .filter(Boolean)
+        .map((rel) => `${rel.resource?.objectType}:${rel.resource?.objectId}#${rel.relation}@${rel.subject?.object?.objectType}:${rel.subject?.object?.objectId}`);
 
     return relationships.length > 0 ? relationships.join('\n') : 'No relationships found';
 }
 
-async function executePermissionCheck(resourceType, resourceId, permission, subjectType, subjectId) {
-    const url = process.env.SPICEDB_URL || 'http://localhost:8443';
-    const token = process.env.SPICEDB_TOKEN || '';
+async function executePermissionCheck(client, resourceType, resourceId, permission, subjectType, subjectId) {
+    const response = await client.checkPermission(v1.CheckPermissionRequest.create({
+        resource: v1.ObjectReference.create({ objectType: resourceType, objectId: resourceId }),
+        permission,
+        subject: v1.SubjectReference.create({
+            object: v1.ObjectReference.create({ objectType: subjectType, objectId: subjectId }),
+        }),
+    }));
 
-    const response = await fetch(`${url}/v1/permissions/check`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            resource: { objectType: resourceType, objectId: resourceId },
-            permission,
-            subject: { object: { objectType: subjectType, objectId: subjectId } }
-        })
-    });
-
-    const data = await response.json();
-    return `Permissionship: ${data.permissionship || 'UNKNOWN'}`;
+    return `Permissionship: ${response.permissionship || 'UNKNOWN'}`;
 }
 
 export default async function handler(req, res) {
-    if (req.method !== "POST") {
-        res.setHeader("Allow", "POST");
-        return res.status(405).json({ ok: false, error: "Method Not Allowed" });
+    if (req.method !== 'POST') {
+        res.setHeader('Allow', 'POST');
+        return res.status(405).json({ ok: false, error: 'Method Not Allowed' });
     }
 
     const { command } = req.body || {};
-    if (typeof command !== "string" || !command.trim()) {
-        return res.status(400).json({ ok: false, error: "Command is required" });
+    if (typeof command !== 'string' || !command.trim()) {
+        return res.status(400).json({ ok: false, error: 'Command is required' });
     }
 
     const tokens = splitArgs(command.trim());
-    if (tokens[0] !== "zed") {
+    if (tokens[0] !== 'zed') {
         return res.status(400).json({ ok: false, error: 'Command must start with "zed"' });
     }
 
     const startedAt = Date.now();
-    let stdout = "";
-    let stderr = "";
+    let stdout = '';
+    let stderr = '';
 
     try {
+        const client = getSpiceDbPromiseClient();
         const subcommand = tokens[1];
 
-        if (subcommand === "schema") {
+        if (subcommand === 'schema') {
             const action = tokens[2];
-            if (action === "read") {
-                stdout = await executeSchemaRead();
+            if (action === 'read') {
+                stdout = await executeSchemaRead(client);
             } else {
                 stderr = `Unsupported schema action: ${action}. Try: zed schema read`;
             }
-        } else if (subcommand === "relationship") {
+        } else if (subcommand === 'relationship') {
             const action = tokens[2];
-            if (action === "read") {
-                // Parse flags: --resource-type, --resource-id, --relation, --subject-type, --subject-id
-                let resourceType, resourceId, relation, subjectType, subjectId;
+            if (action === 'read') {
+                let resourceType;
+                let resourceId;
+                let relation;
+                let subjectType;
+                let subjectId;
                 for (let i = 3; i < tokens.length; i++) {
                     if (tokens[i] === '--resource-type') resourceType = tokens[++i];
                     else if (tokens[i] === '--resource-id') resourceId = tokens[++i];
@@ -131,14 +99,13 @@ export default async function handler(req, res) {
                     else if (tokens[i] === '--subject-type') subjectType = tokens[++i];
                     else if (tokens[i] === '--subject-id') subjectId = tokens[++i];
                 }
-                stdout = await executeRelationshipRead(resourceType, resourceId, relation, subjectType, subjectId);
+                stdout = await executeRelationshipRead(client, resourceType, resourceId, relation, subjectType, subjectId);
             } else {
                 stderr = `Unsupported relationship action: ${action}. Try: zed relationship read --resource-type <type>`;
             }
-        } else if (subcommand === "permission") {
+        } else if (subcommand === 'permission') {
             const action = tokens[2];
-            if (action === "check") {
-                // Parse: zed permission check <resource-type>:<resource-id> <permission> <subject-type>:<subject-id>
+            if (action === 'check') {
                 const resource = tokens[3];
                 const permission = tokens[4];
                 const subject = tokens[5];
@@ -152,7 +119,7 @@ export default async function handler(req, res) {
                     if (!resourceType || !resourceId || !subjectType || !subjectId) {
                         stderr = 'Invalid format. Use type:id for resource and subject';
                     } else {
-                        stdout = await executePermissionCheck(resourceType, resourceId, permission, subjectType, subjectId);
+                        stdout = await executePermissionCheck(client, resourceType, resourceId, permission, subjectType, subjectId);
                     }
                 }
             } else {
@@ -164,8 +131,8 @@ export default async function handler(req, res) {
 
         const endedAt = Date.now();
         return res.status(200).json({
-            ok: stderr === "",
-            code: stderr === "" ? 0 : 1,
+            ok: stderr === '',
+            code: stderr === '' ? 0 : 1,
             stdout,
             stderr,
             startedAt: new Date(startedAt).toISOString(),
@@ -177,8 +144,8 @@ export default async function handler(req, res) {
             ok: false,
             code: null,
             stdout,
-            stderr: err?.message || "Command execution failed",
-            error: err?.message || "Failed to execute command",
+            stderr: err?.message || 'Command execution failed',
+            error: err?.message || 'Failed to execute command',
         });
     }
 }

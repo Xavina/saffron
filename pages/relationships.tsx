@@ -16,6 +16,13 @@ type Relationship = {
 
 type NewRelationship = { resource: string; relation: string; subject: string };
 
+type RelationshipPage = {
+    relationships: Relationship[];
+    pageSize: number;
+    nextCursor: string | null;
+    hasNextPage: boolean;
+};
+
 const Relationships: NextPage = () => {
     const [resources, setResources] = useState<string[]>([]);
     const [relationships, setRelationships] = useState<Relationship[]>([]);
@@ -24,6 +31,10 @@ const Relationships: NextPage = () => {
     const [showAddModal, setShowAddModal] = useState<boolean>(false);
     const [searchTerm, setSearchTerm] = useState<string>("");
     const [filterNamespace, setFilterNamespace] = useState<string>("all");
+    const [currentCursor, setCurrentCursor] = useState<string | null>(null);
+    const [cursorHistory, setCursorHistory] = useState<Array<string | null>>([]);
+    const [nextCursor, setNextCursor] = useState<string | null>(null);
+    const [hasNextPage, setHasNextPage] = useState<boolean>(false);
     const [newRelationship, setNewRelationship] = useState<NewRelationship>({ resource: "", relation: "", subject: "" });
     const [error, setError] = useState<string>("");
     const [success, setSuccess] = useState<string>("");
@@ -31,12 +42,19 @@ const Relationships: NextPage = () => {
 
     useEffect(() => {
         loadResources();
-        loadRelationships();
     }, []);
 
     useEffect(() => {
+        setCursorHistory([]);
+        setNextCursor(null);
+        setHasNextPage(false);
+        setCurrentCursor(null);
+        loadRelationships(null);
+    }, [filterNamespace]);
+
+    useEffect(() => {
         filterRelationships();
-    }, [relationships, searchTerm, filterNamespace]);
+    }, [relationships, searchTerm]);
 
     const loadResources = async () => {
         setIsLoading(true);
@@ -59,17 +77,28 @@ const Relationships: NextPage = () => {
         }
     };
 
-    const loadRelationships = async () => {
+    const loadRelationships = async (cursor: string | null = null) => {
         setIsLoading(true);
         setError("");
         try {
-            const res = await fetch("/api/spicedb/relationships");
+            const params = new URLSearchParams();
+            if (filterNamespace !== "all") {
+                params.set("resource_type", filterNamespace);
+            }
+            if (cursor) {
+                params.set("cursor", cursor);
+            }
+
+            const query = params.toString();
+            const res = await fetch(query ? `/api/spicedb/relationships?${query}` : "/api/spicedb/relationships");
             if (!res.ok) {
                 const errorData = await res.json();
                 setError(`Failed to load relationships: ${errorData.message}`);
             } else {
-                const data = await res.json();
+                const data: RelationshipPage = await res.json();
                 setRelationships(Array.isArray(data.relationships) ? data.relationships : []);
+                setNextCursor(data.nextCursor ?? null);
+                setHasNextPage(Boolean(data.hasNextPage));
             }
         } catch (err: any) {
             setError(`Connection error: ${err.message}`);
@@ -91,10 +120,36 @@ const Relationships: NextPage = () => {
                     rel.subject.id.toLowerCase().includes(q)
             );
         }
-        if (filterNamespace !== "all") {
-            filtered = filtered.filter((rel) => rel.resource.type === filterNamespace);
-        }
         setFilteredRelationships(filtered);
+    };
+
+    const resetPagination = () => {
+        setCursorHistory([]);
+        setNextCursor(null);
+        setHasNextPage(false);
+        setCurrentCursor(null);
+        loadRelationships(null);
+    };
+
+    const goToNextPage = () => {
+        if (!nextCursor || isLoading) {
+            return;
+        }
+
+        setCursorHistory((previous) => [...previous, currentCursor]);
+        setCurrentCursor(nextCursor);
+        loadRelationships(nextCursor);
+    };
+
+    const goToPreviousPage = () => {
+        if (cursorHistory.length === 0 || isLoading) {
+            return;
+        }
+
+        const previousCursor = cursorHistory[cursorHistory.length - 1] ?? null;
+        setCursorHistory((previous) => previous.slice(0, -1));
+        setCurrentCursor(previousCursor);
+        loadRelationships(previousCursor);
     };
 
     const addRelationship = async () => {
@@ -133,7 +188,7 @@ const Relationships: NextPage = () => {
                 setSuccess("Relationship added successfully");
                 setShowAddModal(false);
                 setNewRelationship({ resource: "", relation: "", subject: "" });
-                loadRelationships();
+                resetPagination();
             }
         } catch (err: any) {
             setError(`Error: ${err.message}`);
@@ -160,7 +215,7 @@ const Relationships: NextPage = () => {
                 }),
             });
             setSuccess("Relationship deleted successfully");
-            loadRelationships();
+            resetPagination();
         } catch {
             setError("Failed to delete relationship");
             setIsLoading(false);
@@ -233,7 +288,7 @@ const Relationships: NextPage = () => {
                         </select>
                     </div>
                     <button
-                        onClick={loadRelationships}
+                        onClick={() => loadRelationships(currentCursor)}
                         disabled={isLoading}
                         className="inline-flex items-center justify-center px-3 py-2 border border-gray-600 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-600 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
                     >
@@ -248,6 +303,27 @@ const Relationships: NextPage = () => {
                     <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
                         Relationships ({filteredRelationships.length})
                     </h3>
+                    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-sm text-gray-500">
+                            Page {cursorHistory.length + 1}. Search applies to the current page only.
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={goToPreviousPage}
+                                disabled={cursorHistory.length === 0 || isLoading}
+                                className="inline-flex items-center justify-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                Previous
+                            </button>
+                            <button
+                                onClick={goToNextPage}
+                                disabled={!hasNextPage || !nextCursor || isLoading}
+                                className="inline-flex items-center justify-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
 
                     {filteredRelationships.length > 0 ? (
                         <div className="overflow-x-auto">
