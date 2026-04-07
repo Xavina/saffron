@@ -48,3 +48,6 @@ next-env.d.ts
 .squad/sessions/
 # Squad: SubSquad activation file (local to this machine)
 .squad-workstream
+
+.vs
+.env.local
