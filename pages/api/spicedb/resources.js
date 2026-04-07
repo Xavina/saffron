@@ -1,28 +1,15 @@
+import { v1 } from '@authzed/authzed-node';
+import { getSpiceDbPromiseClient, mapGrpcError } from '../../../lib/spicedb';
+
 export default async function handler(req, res) {
     if (req.method !== 'GET') {
         return res.status(405).json({ message: 'Method not allowed' });
     }
 
-    const spicedbUrl = process.env.SPICEDB_URL || 'http://localhost:8080';
-    const token = process.env.SPICEDB_TOKEN || 'somerandomkeyhere';
-
     try {
+        const client = getSpiceDbPromiseClient();
         // Get schema to extract resource types and their relations
-        const schemaResponse = await fetch(`${spicedbUrl}/v1/schema/read`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-            },
-            body: JSON.stringify({})
-        });
-
-        if (!schemaResponse.ok) {
-            const errorText = await schemaResponse.json();
-            return res.status(schemaResponse.status).json(errorText);
-        }
-
-        const schemaData = await schemaResponse.json();
+        const schemaData = await client.readSchema(v1.ReadSchemaRequest.create({}));
         const schemaText = schemaData.schemaText || '';
 
         // Extract resource types and their relations/permissions
@@ -37,8 +24,9 @@ export default async function handler(req, res) {
     } catch (error) {
         console.error('Resources API error:', error);
         res.status(500).json({
-            message: 'Internal server error',
-            error: error.message
+            message: mapGrpcError(error).message,
+            error: error.message,
+            code: error.code,
         });
     }
 }

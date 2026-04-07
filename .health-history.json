@@ -2,45 +2,45 @@
   "history": [
     {
       "connected": true,
-      "responseTime": 16,
-      "timestamp": "2025-10-26T02:21:17.823Z",
-      "id": 1761445277844,
+      "responseTime": 247,
+      "timestamp": "2026-03-27T18:09:37.940Z",
+      "id": 1774634977972,
       "type": "reconnected",
       "title": "Connection Restored",
       "description": "Successfully reconnected to SpiceDB"
     },
     {
       "connected": false,
+      "responseTime": null,
+      "timestamp": "2026-03-27T18:04:52.187Z",
+      "id": 1774634692300,
+      "type": "disconnected",
+      "title": "Connection Lost",
+      "description": "Unable to reach SpiceDB"
+    },
+    {
+      "connected": true,
+      "responseTime": 25,
+      "timestamp": "2026-03-27T17:59:04.768Z",
+      "id": 1774634344821,
+      "type": "reconnected",
+      "title": "Connection Restored",
+      "description": "Successfully reconnected to SpiceDB"
+    },
+    {
+      "connected": false,
+      "responseTime": null,
+      "timestamp": "2026-03-27T16:29:23.670Z",
+      "id": 1774628963707,
+      "type": "disconnected",
+      "title": "Connection Lost",
+      "description": "Unable to reach SpiceDB"
+    },
+    {
+      "connected": true,
       "responseTime": 17,
-      "timestamp": "2025-10-26T02:21:17.802Z",
-      "id": 1761445277842,
-      "type": "disconnected",
-      "title": "Connection Lost",
-      "description": "Unable to reach SpiceDB"
-    },
-    {
-      "connected": true,
-      "responseTime": 1,
-      "timestamp": "2025-10-26T02:21:00.139Z",
-      "id": 1761445260153,
-      "type": "reconnected",
-      "title": "Connection Restored",
-      "description": "Successfully reconnected to SpiceDB"
-    },
-    {
-      "connected": false,
-      "responseTime": 3,
-      "timestamp": "2025-10-26T02:21:00.132Z",
-      "id": 1761445260142,
-      "type": "disconnected",
-      "title": "Connection Lost",
-      "description": "Unable to reach SpiceDB"
-    },
-    {
-      "connected": true,
-      "responseTime": 7,
-      "timestamp": "2025-10-26T02:21:00.121Z",
-      "id": 1761445260129,
+      "timestamp": "2026-03-20T17:24:39.547Z",
+      "id": 1774027479594,
       "type": "reconnected",
       "title": "Connection Restored",
       "description": "Successfully reconnected to SpiceDB"

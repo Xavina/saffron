@@ -1,3 +1,6 @@
+import { v1 } from '@authzed/authzed-node';
+import { getSpiceDbPromiseClient, mapGrpcError, toObjectReference, toStruct } from '../../../lib/spicedb';
+
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ message: 'Method not allowed' });
@@ -12,69 +15,35 @@ export default async function handler(req, res) {
             });
         }
 
-        const spicedbUrl = process.env.SPICEDB_URL || 'http://localhost:8080';
-        const token = process.env.SPICEDB_TOKEN || 'somerandomkeyhere';
-
-        const response = await fetch(`${spicedbUrl}/v1/permissions/subjects`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-                resource,
-                permission,
-                subjectObjectType
-            })
+        const client = getSpiceDbPromiseClient();
+        const request = v1.LookupSubjectsRequest.create({
+            resource: toObjectReference(resource),
+            permission,
+            subjectObjectType,
+            wildcardOption: v1.LookupSubjectsRequest_WildcardOption.EXCLUDE_WILDCARDS,
+            ...(req.body.context && { context: toStruct(req.body.context) }),
         });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            return res.status(response.status).json({
-                message: `SpiceDB error: ${errorText}`
-            });
-        }
-
-        const subjects = [];
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-
-            let boundary = buffer.lastIndexOf('\n');
-
-            if (boundary !== -1) {
-                const chunks = buffer.slice(0, boundary).split('\n');
-                buffer = buffer.slice(boundary + 1);
-
-                for (const chunk of chunks) {
-                    if (chunk.trim() === '') continue;
-
-                    try {
-                        const parsed = JSON.parse(chunk);
-                        if (parsed.result && parsed.result.subject) {
-                            subjects.push(parsed.result.subject);
-                        }
-                    } catch (e) {
-                        console.error('Failed to parse chunk:', chunk, e);
-                    }
-                }
-            }
-        }
+        const results = await client.lookupSubjects(request);
+        const subjects = results
+            .map((result) => result.subject)
+            .filter(Boolean)
+            .map((subject) => ({
+                object: {
+                    objectType: subject.subjectObjectType || subjectObjectType,
+                    objectId: subject.subjectObjectId,
+                },
+                optionalRelation: subject.optionalSubjectRelation || '',
+            }));
 
         res.status(200).json({ subjects });
 
     } catch (error) {
         console.error('Lookup subjects API error:', error);
         res.status(500).json({
-            message: 'Internal server error',
-            error: error.message
+            message: mapGrpcError(error).message,
+            error: error.message,
+            code: error.code,
         });
     }
 }

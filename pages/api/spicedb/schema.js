@@ -1,34 +1,21 @@
+import { v1 } from '@authzed/authzed-node';
+import { getSpiceDbPromiseClient, mapGrpcError } from '../../../lib/spicedb';
+
 export default async function handler(req, res) {
-    const spicedbUrl = process.env.SPICEDB_URL || 'http://localhost:8080';
-    const token = process.env.SPICEDB_TOKEN || 'somerandomkeyhere';
+    const client = getSpiceDbPromiseClient();
 
     if (req.method === 'GET') {
         try {
-            const response = await fetch(`${spicedbUrl}/v1/schema/read`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                }
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('SpiceDB schema read error:', response.status, errorText);
-                return res.status(response.status).json({
-                    message: `SpiceDB error: ${errorText}`
-                });
-            }
-
-            const data = await response.json();
+            const data = await client.readSchema(v1.ReadSchemaRequest.create({}));
             // Return the schema text
             res.status(200).send(data.schemaText || '');
 
         } catch (error) {
             console.error('Schema read API error:', error);
             res.status(500).json({
-                message: 'Internal server error',
-                error: error.message
+                message: mapGrpcError(error).message,
+                error: error.message,
+                code: error.code,
             });
         }
     }
@@ -46,33 +33,15 @@ export default async function handler(req, res) {
 
             console.log('Writing schema:', schemaText);
 
-            const response = await fetch(`${spicedbUrl}/v1/schema/write`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    schema: schemaText
-                })
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('SpiceDB schema write error:', response.status, errorText);
-                return res.status(response.status).json({
-                    message: `SpiceDB error: ${errorText}`
-                });
-            }
-
-            const data = await response.json();
+            const data = await client.writeSchema(v1.WriteSchemaRequest.create({ schema: schemaText }));
             res.status(200).json(data);
 
         } catch (error) {
             console.error('Schema write API error:', error);
             res.status(500).json({
-                message: 'Internal server error',
-                error: error.message
+                message: mapGrpcError(error).message,
+                error: error.message,
+                code: error.code,
             });
         }
     }

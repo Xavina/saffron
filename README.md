@@ -163,15 +163,15 @@ If you want to run SpiceDB without Docker Compose (requires manual PostgreSQL se
      postgres:15-alpine
    ```
 
-2. **Start SpiceDB with HTTP API**
+2. **Start SpiceDB with gRPC API**
 
    ```bash
-   docker run -d --name spicedb \
-     -p 50051:50051 -p 8443:8443 \
+    docker run -d --name spicedb \
+       -p 50051:50051 \
      -e SPICEDB_GRPC_PRESHARED_KEY="saffron-dev-key" \
      -e SPICEDB_DATASTORE_ENGINE=postgres \
      -e SPICEDB_DATASTORE_CONN_URI="postgres://spicedb:spicedb@host.docker.internal:5432/spicedb?sslmode=disable" \
-     authzed/spicedb serve --http-enabled
+       authzed/spicedb serve
    ```
 
 3. **Run database migrations**
@@ -193,16 +193,10 @@ If you want to run SpiceDB without Docker Compose (requires manual PostgreSQL se
 
    Create `.env.local`:
    ```bash
-   # HTTP API (used by UI for schema, relationships, permissions)
-   SPICEDB_URL=http://localhost:8443
-   SPICEDB_TOKEN=saffron-dev-key
-
-   # gRPC API (used only by the Terminal page for zed emulation)
+   # gRPC API (used by all Saffron backend routes)
    SPICEDB_ENDPOINT=localhost:50051
    SPICEDB_PRESHARED_KEY=saffron-dev-key
    SPICEDB_INSECURE=true
-
-   > **Note:** The UI itself uses only the HTTP API. The gRPC endpoint is used only for the Terminal page's zed command emulation. If you do not use the Terminal, you may ignore the gRPC settings.
    ```
 
 6. **Start the UI**
@@ -221,14 +215,12 @@ If you want to run SpiceDB without Docker Compose (requires manual PostgreSQL se
 Create a `.env.local` file in the root directory (see above for details). The default values are:
 
 ```bash
-SPICEDB_URL=http://localhost:8443
-SPICEDB_TOKEN=saffron-dev-key
 SPICEDB_ENDPOINT=localhost:50051
 SPICEDB_PRESHARED_KEY=saffron-dev-key
 SPICEDB_INSECURE=true
 ```
 
-> **Note:** If you do not set these, the backend will fall back to legacy/test defaults (`http://localhost:8080` and `somerandomkeyhere`), which may not work with your setup. Always use `.env.local` for local development.
+> **Note:** If you do not set these, the backend will fall back to defaults (`localhost:50051` and `somerandomkeyhere`). Always use `.env.local` for local development.
 
 ### Docker Compose Services
 
@@ -237,7 +229,6 @@ The `docker-compose.yml` defines three services:
 - **postgres** - PostgreSQL database (SpiceDB's datastore) on internal network
 - **spicedb** - Authorization service
   - gRPC API: `localhost:50051`
-  - HTTP API: `localhost:8443`
 - **saffron** - Next.js UI application on `localhost:7777`
 
 All services share a `saffron-network` for internal communication.
@@ -349,7 +340,7 @@ The UI creates several API routes:
 
 - **Frontend**: Next.js 13+, React, Tailwind CSS
 - **Backend**: Next.js API routes
-- **Database**: SpiceDB (via HTTP API)
+- **Database**: SpiceDB (via gRPC API)
 - **Styling**: Tailwind CSS with custom components
 - **Icons**: Tabler
 
