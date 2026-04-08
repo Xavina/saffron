@@ -1,6 +1,8 @@
 import { v1 } from '@authzed/authzed-node';
 import { getSpiceDbPromiseClient } from '../../../lib/spicedb';
 
+const STATS_PAGE_SIZE = 1000;
+
 function withTimeout(promise, timeoutMs) {
     return Promise.race([
         promise,
@@ -121,33 +123,42 @@ async function getNamespaceRelationshipCounts(client, namespaceDetails) {
 
     for (const ns of namespaceDetails) {
         try {
-            const response = await withTimeout(
-                client.readRelationships(v1.ReadRelationshipsRequest.create({
-                    relationshipFilter: v1.RelationshipFilter.create({
-                        resourceType: ns.name,
-                    }),
-                    optionalLimit: 1000,
-                })),
-                2000,
-            );
-
-            const relationships = response
-                .map((item) => item.relationship)
-                .filter(Boolean);
-
             const uniqueSubjects = new Set();
             const subjectTypes = new Set();
+            let relationshipCount = 0;
+            let cursorToken = null;
 
-            relationships.forEach((rel) => {
-                if (rel.subject?.object) {
-                    uniqueSubjects.add(`${rel.subject.object.objectType}:${rel.subject.object.objectId}`);
-                    subjectTypes.add(rel.subject.object.objectType);
-                }
-            });
+            do {
+                const response = await withTimeout(
+                    client.readRelationships(v1.ReadRelationshipsRequest.create({
+                        relationshipFilter: v1.RelationshipFilter.create({
+                            resourceType: ns.name,
+                        }),
+                        optionalLimit: STATS_PAGE_SIZE,
+                        ...(cursorToken ? { optionalCursor: v1.Cursor.create({ token: cursorToken }) } : {}),
+                    })),
+                    2000,
+                );
+
+                const relationships = response
+                    .map((item) => item.relationship)
+                    .filter(Boolean);
+
+                relationshipCount += relationships.length;
+
+                relationships.forEach((rel) => {
+                    if (rel.subject?.object) {
+                        uniqueSubjects.add(`${rel.subject.object.objectType}:${rel.subject.object.objectId}`);
+                        subjectTypes.add(rel.subject.object.objectType);
+                    }
+                });
+
+                cursorToken = response.at(-1)?.afterResultCursor?.token || null;
+            } while (cursorToken);
 
             namespacesWithCounts.push({
                 namespace: ns.name,
-                relationshipCount: relationships.length,
+                relationshipCount,
                 subjectCount: uniqueSubjects.size,
                 relationTypes: ns.relations || [],
                 subjectTypes: Array.from(subjectTypes),

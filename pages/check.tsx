@@ -7,6 +7,12 @@ import { IconAlertHexagon, IconCircleCheck, IconExclamationCircle, IconHelpHexag
 type CheckForm = { resource: string; permission: string; subject: string; context: string };
 type ExpandForm = { resource: string; permission: string; context: string };
 type LookupForm = { resource: string; permission: string; subjectType: string; context: string };
+type LookupSubject = {
+    objectType?: string;
+    objectId?: string;
+    object?: { objectType?: string; objectId?: string };
+    optionalRelation?: string;
+};
 
 type CheckResult =
     | {
@@ -23,7 +29,7 @@ type CheckResult =
     }
     | {
         type: "lookup";
-        subjects: Array<{ objectType?: string; objectId?: string }> | [];
+        subjects: LookupSubject[];
         looked_up_at?: string;
         query: string;
     };
@@ -230,6 +236,18 @@ const CheckPage: NextPage = () => {
                 ))}
             </div>
         );
+    };
+
+    const getLookupSubjectLabel = (subject: LookupSubject) => {
+        const objectType = subject.object?.objectType || subject.objectType;
+        const objectId = subject.object?.objectId || subject.objectId;
+        const optionalRelation = subject.optionalRelation ? `#${subject.optionalRelation}` : "";
+
+        if (!objectType && !objectId) {
+            return "Unknown subject";
+        }
+
+        return `${objectType ?? "?"}:${objectId ?? "?"}${optionalRelation}`;
     };
 
     const getPermissionshipColor = (p?: string) => {
@@ -549,9 +567,9 @@ const CheckPage: NextPage = () => {
                         {result && result.type === "lookup" && (
                             <div className="mt-6 space-y-2">
                                 {(result.subjects ?? []).map((s, i) => (
-                                    <div key={`${s.objectType}-${s.objectId}-${i}`} className="p-2 border rounded">
+                                    <div key={`${s.object?.objectType || s.objectType}-${s.object?.objectId || s.objectId}-${i}`} className="p-2 border rounded">
                                         <span className="font-mono text-sm">
-                                            {s.objectType}:{s.objectId}
+                                            {getLookupSubjectLabel(s)}
                                         </span>
                                     </div>
                                 ))}

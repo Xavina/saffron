@@ -1,6 +1,8 @@
 import { v1 } from '@authzed/authzed-node';
 import { getSpiceDbEndpoint, getSpiceDbPromiseClient } from '../../../lib/spicedb';
 
+const ACTIVITY_PAGE_SIZE = 1000;
+
 export default async function handler(req, res) {
     if (req.method !== 'GET') {
         return res.status(405).json({ message: 'Method not allowed' });
@@ -41,12 +43,16 @@ export default async function handler(req, res) {
                 let totalRelationships = 0;
                 const recentRelationships = [];
 
-                for (const namespace of namespaces.slice(0, 3)) {
+                for (const namespace of namespaces) {
                     try {
-                        const relationships = await getRelationshipsForType(client, namespace);
-                        totalRelationships += relationships.length;
+                        const summary = await getRelationshipSummaryForType(client, namespace, 2);
+                        totalRelationships += summary.totalCount;
 
-                        relationships.slice(0, 2).forEach((rel, index) => {
+                        if (recentRelationships.length >= 3) {
+                            continue;
+                        }
+
+                        summary.samples.forEach((rel, index) => {
                             recentRelationships.push({
                                 id: `rel_${namespace}_${index}`,
                                 action: 'Relationship Active',
@@ -156,26 +162,56 @@ async function getNamespacesFromSchema(client) {
 }
 
 async function getRelationshipsForType(client, resourceType) {
-    const response = await client.readRelationships(v1.ReadRelationshipsRequest.create({
-        relationshipFilter: v1.RelationshipFilter.create({
-            resourceType,
-        }),
-    }));
+    const summary = await getRelationshipSummaryForType(client, resourceType);
+    return summary.samples;
+}
 
-    return response
-        .map((item) => item.relationship)
-        .filter(Boolean)
-        .map((rel) => ({
-            resource: {
-                type: rel.resource.objectType,
-                id: rel.resource.objectId,
-            },
-            relation: rel.relation,
-            subject: {
-                type: rel.subject.object.objectType,
-                id: rel.subject.object.objectId,
-            },
+async function getRelationshipSummaryForType(client, resourceType, sampleLimit = ACTIVITY_PAGE_SIZE) {
+    const samples = [];
+    let totalCount = 0;
+    let cursorToken = null;
+
+    do {
+        const response = await client.readRelationships(v1.ReadRelationshipsRequest.create({
+            relationshipFilter: v1.RelationshipFilter.create({
+                resourceType,
+            }),
+            optionalLimit: ACTIVITY_PAGE_SIZE,
+            ...(cursorToken ? { optionalCursor: v1.Cursor.create({ token: cursorToken }) } : {}),
         }));
+
+        const relationships = response
+            .map((item) => item.relationship)
+            .filter(Boolean)
+            .map((rel) => ({
+                resource: {
+                    type: rel.resource.objectType,
+                    id: rel.resource.objectId,
+                },
+                relation: rel.relation,
+                subject: {
+                    type: rel.subject.object.objectType,
+                    id: rel.subject.object.objectId,
+                },
+            }));
+
+        totalCount += relationships.length;
+
+        for (const relationship of relationships) {
+            if (samples.length >= sampleLimit) {
+                break;
+            }
+
+            samples.push(relationship);
+        }
+
+        cursorToken = response.at(-1)?.afterResultCursor?.token || null;
+    } while (cursorToken);
+
+    return {
+        totalCount,
+        samples,
+    };
 }
 
 function getRelativeTime(minutesAgo) {
