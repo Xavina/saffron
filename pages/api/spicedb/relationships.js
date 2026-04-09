@@ -184,14 +184,20 @@ async function fetchRelationshipsPageAcrossTypes(client, cursor = null) {
         }
 
         if (page.relationships.length > remaining) {
-            relationships.push(...page.relationships.slice(0, remaining).map(transformRelationship));
+            const keptRelationships = page.relationships.slice(0, remaining);
+            const lastKeptRelationship = keptRelationships.at(-1) || null;
+            const lastKeptResult = lastKeptRelationship
+                ? page.results.find((result) => result.relationship === lastKeptRelationship)
+                : null;
+
+            relationships.push(...keptRelationships.map(transformRelationship));
             return {
                 relationships,
                 pageSize: PAGE_SIZE,
                 nextCursor: encodeCursor({
                     kind: 'all',
                     resourceType,
-                    token: page.results[remaining - 1]?.afterResultCursor?.token || null,
+                    token: lastKeptResult?.afterResultCursor?.token || null,
                 }),
                 hasNextPage: true,
             };

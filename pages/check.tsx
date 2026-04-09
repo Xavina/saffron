@@ -7,11 +7,17 @@ import { IconAlertHexagon, IconCircleCheck, IconExclamationCircle, IconHelpHexag
 type CheckForm = { resource: string; permission: string; subject: string; context: string };
 type ExpandForm = { resource: string; permission: string; context: string };
 type LookupForm = { resource: string; permission: string; subjectType: string; context: string };
+type LookupSubject = {
+    objectType?: string;
+    objectId?: string;
+    object?: { objectType?: string; objectId?: string };
+    optionalRelation?: string;
+};
 
 type CheckResult =
     | {
         type: "check";
-        permissionship: string;
+        permissionship: string | number;
         checked_at?: string;
         query: string;
         duration?: number;
@@ -23,7 +29,7 @@ type CheckResult =
     }
     | {
         type: "lookup";
-        subjects: Array<{ objectType?: string; objectId?: string }> | [];
+        subjects: LookupSubject[];
         looked_up_at?: string;
         query: string;
     };
@@ -232,46 +238,80 @@ const CheckPage: NextPage = () => {
         );
     };
 
-    const getPermissionshipColor = (p?: string) => {
-        switch (p) {
+    const getLookupSubjectLabel = (subject: LookupSubject) => {
+        const objectType = subject.object?.objectType || subject.objectType;
+        const objectId = subject.object?.objectId || subject.objectId;
+        const optionalRelation = subject.optionalRelation ? `#${subject.optionalRelation}` : "";
+
+        if (!objectType && !objectId) {
+            return "Unknown subject";
+        }
+
+        return `${objectType ?? "?"}:${objectId ?? "?"}${optionalRelation}`;
+    };
+
+    const normalizePermissionship = (permissionship?: string | number) => {
+        switch (permissionship) {
+            case 2:
+            case "2":
+            case "HAS_PERMISSION":
             case "PERMISSIONSHIP_HAS_PERMISSION":
-                return "bg-green-100 text-green-800 border-green-200";
+                return "HAS_PERMISSION";
+            case 1:
+            case "1":
+            case "NO_PERMISSION":
             case "PERMISSIONSHIP_NO_PERMISSION":
-                return "bg-red-100 text-red-800 border-red-200";
+                return "NO_PERMISSION";
+            case 3:
+            case "3":
+            case "CONDITIONAL_PERMISSION":
             case "PERMISSIONSHIP_CONDITIONAL_PERMISSION":
+                return "CONDITIONAL_PERMISSION";
+            default:
+                return "UNKNOWN";
+        }
+    };
+
+    const getPermissionshipColor = (p?: string | number) => {
+        switch (normalizePermissionship(p)) {
+            case "HAS_PERMISSION":
+                return "bg-green-100 text-green-800 border-green-200";
+            case "NO_PERMISSION":
+                return "bg-red-100 text-red-800 border-red-200";
+            case "CONDITIONAL_PERMISSION":
                 return "bg-yellow-100 text-yellow-800 border-yellow-200";
             default:
                 return "bg-gray-100 text-gray-800 border-gray-200";
         }
     };
 
-    const getPermissionshipIcon = (p?: string) => {
-        switch (p) {
-            case "PERMISSIONSHIP_HAS_PERMISSION":
+    const getPermissionshipIcon = (p?: string | number) => {
+        switch (normalizePermissionship(p)) {
+            case "HAS_PERMISSION":
                 return <IconCircleCheck />;
-            case "PERMISSIONSHIP_NO_PERMISSION":
+            case "NO_PERMISSION":
                 return <IconExclamationCircle />;
-            case "PERMISSIONSHIP_CONDITIONAL_PERMISSION":
+            case "CONDITIONAL_PERMISSION":
                 return <IconAlertHexagon />;
             default:
                 return <IconHelpHexagon />;
         }
     };
 
-    const getPermissionshipText = (p?: string) => {
-        switch (p) {
-            case "PERMISSIONSHIP_HAS_PERMISSION":
+    const getPermissionshipText = (p?: string | number) => {
+        switch (normalizePermissionship(p)) {
+            case "HAS_PERMISSION":
                 return "Permission Allowed";
-            case "PERMISSIONSHIP_NO_PERMISSION":
+            case "NO_PERMISSION":
                 return "Permission Denied";
-            case "PERMISSIONSHIP_CONDITIONAL_PERMISSION":
+            case "CONDITIONAL_PERMISSION":
                 return "Conditional Permission";
             default:
                 return "Unknown";
         }
     };
 
-    const renderPermissionQuery = (query: string, permissionship: string) => {
+    const renderPermissionQuery = (query: string, permissionship: string | number) => {
         // Parse query: "user:ceo → resource:promserver#view"
         const parts = query.split(' → ');
         if (parts.length !== 2) return <span className="font-mono text-sm">{query}</span>;
@@ -286,7 +326,8 @@ const CheckPage: NextPage = () => {
         const resourceId = resourceMatch[2]; // "promserver"
         const permission = resourceMatch[3]; // "view"
 
-        const isAllowed = permissionship === "PERMISSIONSHIP_HAS_PERMISSION";
+        const normalizedPermissionship = normalizePermissionship(permissionship);
+        const isAllowed = normalizedPermissionship === "HAS_PERMISSION";
         const permissionPillColor = isAllowed
             ? "bg-green-100 text-green-800 border-green-200"
             : "bg-red-100 text-red-800 border-red-200";
@@ -549,9 +590,9 @@ const CheckPage: NextPage = () => {
                         {result && result.type === "lookup" && (
                             <div className="mt-6 space-y-2">
                                 {(result.subjects ?? []).map((s, i) => (
-                                    <div key={`${s.objectType}-${s.objectId}-${i}`} className="p-2 border rounded">
+                                    <div key={`${s.object?.objectType || s.objectType}-${s.object?.objectId || s.objectId}-${i}`} className="p-2 border rounded">
                                         <span className="font-mono text-sm">
-                                            {s.objectType}:{s.objectId}
+                                            {getLookupSubjectLabel(s)}
                                         </span>
                                     </div>
                                 ))}
