@@ -1,18 +1,26 @@
 import type { NextPage } from "next";
 import { useState } from "react";
 import Layout from "../components/Layout";
-import { IconCircleCheck, IconRefreshDot, IconShieldCheck, IconX } from "@tabler/icons-react";
+import {
+    IconAlertHexagon,
+    IconCircleCheck,
+    IconExclamationCircle,
+    IconHelpHexagon,
+    IconRefreshDot,
+    IconShieldCheck,
+} from "@tabler/icons-react";
 import Warning from "@/components/Warning";
 
 type SingleCheckForm = { resource: string; permission: string; subject: string };
 type BulkCheckForm = { resource: string; permission: string; subjects: string };
+type PermissionResult = "ALLOWED" | "DENIED" | "CONDITIONAL" | "UNKNOWN";
 
 type SingleResult = {
     id: string;
     resource: { type: string; id: string };
     permission: string;
     subject: { type: string; id: string };
-    result: "ALLOWED" | "DENIED";
+    result: PermissionResult;
     timestamp: string;
     duration: string;
 };
@@ -28,6 +36,120 @@ const Permissions: NextPage = () => {
     const [error, setError] = useState<string>("");
     const [result, setResult] = useState<SingleResult | BulkResult | null>(null);
 
+    const normalizePermissionship = (permissionship?: string | number) => {
+        switch (permissionship) {
+            case 2:
+            case "2":
+            case "HAS_PERMISSION":
+            case "PERMISSIONSHIP_HAS_PERMISSION":
+                return "HAS_PERMISSION";
+            case 1:
+            case "1":
+            case "NO_PERMISSION":
+            case "PERMISSIONSHIP_NO_PERMISSION":
+                return "NO_PERMISSION";
+            case 3:
+            case "3":
+            case "CONDITIONAL_PERMISSION":
+            case "PERMISSIONSHIP_CONDITIONAL_PERMISSION":
+                return "CONDITIONAL_PERMISSION";
+            default:
+                return "UNKNOWN";
+        }
+    };
+
+    const mapPermissionshipToResult = (permissionship?: string | number): PermissionResult => {
+        switch (normalizePermissionship(permissionship)) {
+            case "HAS_PERMISSION":
+                return "ALLOWED";
+            case "NO_PERMISSION":
+                return "DENIED";
+            case "CONDITIONAL_PERMISSION":
+                return "CONDITIONAL";
+            default:
+                return "UNKNOWN";
+        }
+    };
+
+    const buildCheckRequest = (resourceValue: string, permission: string, subjectValue: string) => {
+        const [resourceType, resourceId] = resourceValue.split(":");
+        const [subjectType, subjectId] = subjectValue.split(":");
+
+        if (!resourceType || !resourceId || !subjectType || !subjectId) {
+            throw new Error("Invalid format. Use type:id format");
+        }
+
+        return {
+            resource: { object_type: resourceType, object_id: resourceId },
+            permission,
+            subject: { object: { object_type: subjectType, object_id: subjectId } },
+            resourceType,
+            resourceId,
+            subjectType,
+            subjectId,
+        };
+    };
+
+    const buildSingleResult = ({
+        permission,
+        resourceType,
+        resourceId,
+        subjectType,
+        subjectId,
+        data,
+        duration,
+    }: {
+        permission: string;
+        resourceType: string;
+        resourceId: string;
+        subjectType: string;
+        subjectId: string;
+        data: Record<string, any>;
+        duration: string;
+    }): SingleResult => ({
+        id: `${Date.now()}-${subjectType}-${subjectId}`,
+        resource: { type: resourceType, id: resourceId },
+        permission,
+        subject: { type: subjectType, id: subjectId },
+        result: mapPermissionshipToResult(data.permissionship),
+        timestamp: typeof data.checked_at === "string"
+            ? data.checked_at
+            : typeof data.checkedAt === "string"
+                ? data.checkedAt
+                : new Date().toISOString(),
+        duration,
+    });
+
+    const checkPermission = async (resourceValue: string, permission: string, subjectValue: string) => {
+        const request = buildCheckRequest(resourceValue, permission, subjectValue);
+        const startedAt = performance.now();
+        const response = await fetch("/api/spicedb/check", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                resource: request.resource,
+                permission: request.permission,
+                subject: request.subject,
+            }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || "Check request failed");
+        }
+
+        return buildSingleResult({
+            permission,
+            resourceType: request.resourceType,
+            resourceId: request.resourceId,
+            subjectType: request.subjectType,
+            subjectId: request.subjectId,
+            data,
+            duration: `${Math.max(1, Math.round(performance.now() - startedAt))}ms`,
+        });
+    };
+
     const performSingleCheck = async () => {
         if (!checkForm.resource || !checkForm.permission || !checkForm.subject) {
             setError("All fields are required");
@@ -39,29 +161,12 @@ const Permissions: NextPage = () => {
         setResult(null);
 
         try {
-            const [resourceType, resourceId] = checkForm.resource.split(":");
-            const [subjectType, subjectId] = checkForm.subject.split(":");
-            if (!resourceType || !resourceId || !subjectType || !subjectId) {
-                throw new Error("Invalid format. Use type:id format");
-            }
-
-            // Mocked result (replace with real API if desired)
-            setTimeout(() => {
-                const mockResult: SingleResult = {
-                    id: Date.now().toString(),
-                    resource: { type: resourceType, id: resourceId },
-                    permission: checkForm.permission,
-                    subject: { type: subjectType, id: subjectId },
-                    result: Math.random() > 0.5 ? "ALLOWED" : "DENIED",
-                    timestamp: new Date().toISOString(),
-                    duration: `${Math.floor(Math.random() * 5) + 1}ms`,
-                };
-                setResult(mockResult);
-                setCheckHistory((prev) => [mockResult, ...prev]);
-                setIsLoading(false);
-            }, 800);
+            const singleResult = await checkPermission(checkForm.resource, checkForm.permission, checkForm.subject);
+            setResult(singleResult);
+            setCheckHistory((prev) => [singleResult, ...prev]);
         } catch (err: any) {
             setError(err.message || "Failed to perform permission check");
+        } finally {
             setIsLoading(false);
         }
     };
@@ -77,30 +182,16 @@ const Permissions: NextPage = () => {
         setResult(null);
 
         try {
-            const [resourceType, resourceId] = bulkCheck.resource.split(":");
-            if (!resourceType || !resourceId) throw new Error("Invalid resource format. Use type:id format");
-
             const subjects = bulkCheck.subjects.split("\n").map((s) => s.trim()).filter(Boolean);
+            const bulkResults = await Promise.all(
+                subjects.map((subject) => checkPermission(bulkCheck.resource, bulkCheck.permission, subject))
+            );
 
-            setTimeout(() => {
-                const bulkResults: SingleResult[] = subjects.map((line, idx) => {
-                    const [st, sid] = line.split(":");
-                    return {
-                        id: `${Date.now()}-${idx}`,
-                        resource: { type: resourceType, id: resourceId },
-                        permission: bulkCheck.permission,
-                        subject: { type: st ?? "unknown", id: sid ?? "unknown" },
-                        result: Math.random() > 0.5 ? "ALLOWED" : "DENIED",
-                        timestamp: new Date().toISOString(),
-                        duration: `${Math.floor(Math.random() * 5) + 1}ms`,
-                    };
-                });
-                setResult({ type: "bulk", results: bulkResults });
-                setCheckHistory((prev) => [...bulkResults, ...prev]);
-                setIsLoading(false);
-            }, 1000);
+            setResult({ type: "bulk", results: bulkResults });
+            setCheckHistory((prev) => [...bulkResults, ...prev]);
         } catch (err: any) {
             setError(err.message || "Failed to perform bulk permission check");
+        } finally {
             setIsLoading(false);
         }
     };
@@ -110,10 +201,31 @@ const Permissions: NextPage = () => {
         setResult(null);
     };
 
-    const getResultColor = (r: SingleResult["result"]) =>
-        r === "ALLOWED" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
+    const getResultColor = (r: SingleResult["result"]) => {
+        switch (r) {
+            case "ALLOWED":
+                return "bg-green-100 text-green-800";
+            case "DENIED":
+                return "bg-red-100 text-red-800";
+            case "CONDITIONAL":
+                return "bg-yellow-100 text-yellow-800";
+            default:
+                return "bg-gray-100 text-gray-800";
+        }
+    };
 
-    const getResultIcon = (r: SingleResult["result"]) => (r === "ALLOWED" ? <IconCircleCheck /> : <IconX />);
+    const getResultIcon = (r: SingleResult["result"]) => {
+        switch (r) {
+            case "ALLOWED":
+                return <IconCircleCheck />;
+            case "DENIED":
+                return <IconExclamationCircle />;
+            case "CONDITIONAL":
+                return <IconAlertHexagon />;
+            default:
+                return <IconHelpHexagon />;
+        }
+    };
 
     return (
         <div className="space-y-6">
