@@ -210,7 +210,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                                     <button
                                                         className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-purple-800"
                                                         onClick={() => {
-                                                            window.open('https://github.com/dreaminhex/saffron', '_blank');
+                                                            window.open('https://github.com/Xavina/saffron', '_blank');
                                                             setSettingsOpen(false);
                                                         }}
                                                     >
@@ -221,7 +221,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                                     <button
                                                         className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-purple-800"
                                                         onClick={() => {
-                                                            window.open('https://github.com/dreaminhex/saffron/blob/main/README.md', '_blank');
+                                                            window.open('https://github.com/Xavina/saffron/blob/main/README.md', '_blank');
                                                             setSettingsOpen(false);
                                                         }}
                                                     >
