@@ -7,7 +7,7 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { resource, permission, subject, context } = req.body;
+        const { resource, permission, subject, context, withTracing } = req.body;
 
         // Validate required fields
         if (!resource || !permission || !subject) {
@@ -22,6 +22,7 @@ export default async function handler(req, res) {
             permission,
             subject: toSubjectReference(subject),
             ...(context && { context: toStruct(context) }),
+            ...(withTracing && { withTracing: true }),
         });
 
         const data = await client.checkPermission(request);

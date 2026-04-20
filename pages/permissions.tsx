@@ -4,16 +4,23 @@ import Layout from "../components/Layout";
 import {
     IconAlertHexagon,
     IconCircleCheck,
+    IconChevronDown,
+    IconChevronRight,
     IconExclamationCircle,
     IconHelpHexagon,
     IconRefreshDot,
     IconShieldCheck,
 } from "@tabler/icons-react";
 import Warning from "@/components/Warning";
+import PermissionDecisionTree, { type PermissionDebugTrace } from "@/components/PermissionDecisionTree";
 
 type SingleCheckForm = { resource: string; permission: string; subject: string };
 type BulkCheckForm = { resource: string; permission: string; subjects: string };
 type PermissionResult = "ALLOWED" | "DENIED" | "CONDITIONAL" | "UNKNOWN";
+
+type PermissionDebugInfo = {
+    check?: PermissionDebugTrace;
+};
 
 type SingleResult = {
     id: string;
@@ -23,6 +30,7 @@ type SingleResult = {
     result: PermissionResult;
     timestamp: string;
     duration: string;
+    debugTrace?: PermissionDebugInfo;
 };
 
 type BulkResult = { type: "bulk"; results: SingleResult[] };
@@ -35,6 +43,7 @@ const Permissions: NextPage = () => {
     const [activeTab, setActiveTab] = useState<"single" | "bulk">("single");
     const [error, setError] = useState<string>("");
     const [result, setResult] = useState<SingleResult | BulkResult | null>(null);
+    const [expandedTraceIds, setExpandedTraceIds] = useState<Record<string, boolean>>({});
 
     const normalizePermissionship = (permissionship?: string | number) => {
         switch (permissionship) {
@@ -118,7 +127,19 @@ const Permissions: NextPage = () => {
                 ? data.checkedAt
                 : new Date().toISOString(),
         duration,
+        debugTrace: data.debugTrace || data.debug_trace,
     });
+
+    const toggleTrace = (id: string) => {
+        setExpandedTraceIds((current) => ({
+            ...current,
+            [id]: !current[id],
+        }));
+    };
+
+    const hasTrace = (item: SingleResult) => Boolean(item.debugTrace?.check);
+
+    const isTraceExpanded = (id: string) => Boolean(expandedTraceIds[id]);
 
     const checkPermission = async (resourceValue: string, permission: string, subjectValue: string) => {
         const request = buildCheckRequest(resourceValue, permission, subjectValue);
@@ -130,6 +151,7 @@ const Permissions: NextPage = () => {
                 resource: request.resource,
                 permission: request.permission,
                 subject: request.subject,
+                withTracing: true,
             }),
         });
 
@@ -403,32 +425,76 @@ const Permissions: NextPage = () => {
                                 </p>
                                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                                     {result.results.map((r) => (
-                                        <div key={r.id} className="flex items-center justify-between p-3 border rounded-lg">
-                                            <span className="text-sm font-medium">
-                                                {r.subject.type}:{r.subject.id}
-                                            </span>
-                                            <div className="flex items-center space-x-2">
-                                                <span className={`px-2 py-1 rounded text-xs font-medium ${getResultColor(r.result)}`}>
-                                                    {getResultIcon(r.result)} {r.result}
-                                                </span>
-                                                <span className="text-xs text-gray-500">{r.duration}</span>
+                                        <div key={r.id} className="rounded-lg border p-3">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="flex items-start gap-3">
+                                                    {hasTrace(r) && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => toggleTrace(r.id)}
+                                                            className="inline-flex items-center gap-1 pt-0.5 text-sm font-medium text-blue-600 hover:text-blue-800"
+                                                            aria-expanded={isTraceExpanded(r.id)}
+                                                        >
+                                                            {isTraceExpanded(r.id) ? (
+                                                                <IconChevronDown className="h-4 w-4" aria-hidden />
+                                                            ) : (
+                                                                <IconChevronRight className="h-4 w-4" aria-hidden />
+                                                            )}
+                                                            Explain
+                                                        </button>
+                                                    )}
+                                                    <span className="text-sm font-medium">
+                                                        {r.subject.type}:{r.subject.id}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center space-x-2">
+                                                    <span className={`px-2 py-1 rounded text-xs font-medium ${getResultColor(r.result)}`}>
+                                                        {getResultIcon(r.result)} {r.result}
+                                                    </span>
+                                                    <span className="text-xs text-gray-500">{r.duration}</span>
+                                                </div>
                                             </div>
+                                            {isTraceExpanded(r.id) && r.debugTrace?.check && (
+                                                <PermissionDecisionTree trace={r.debugTrace.check} />
+                                            )}
                                         </div>
                                     ))}
                                 </div>
                             </div>
                         ) : (
-                            <div className="flex items-center justify-between p-4 border rounded-lg">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-900">
-                                        {result.subject.type}:{result.subject.id} → {result.resource.type}:{result.resource.id}#
-                                        {result.permission}
-                                    </p>
-                                    <p className="text-xs text-gray-500">Duration: {result.duration}</p>
+                            <div className="space-y-3 rounded-lg border p-4">
+                                <div className="flex items-start justify-between gap-4">
+                                    <div className="flex items-start gap-3">
+                                        {hasTrace(result) && (
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleTrace(result.id)}
+                                                className="inline-flex items-center gap-1 pt-0.5 text-sm font-medium text-blue-600 hover:text-blue-800"
+                                                aria-expanded={isTraceExpanded(result.id)}
+                                            >
+                                                {isTraceExpanded(result.id) ? (
+                                                    <IconChevronDown className="h-4 w-4" aria-hidden />
+                                                ) : (
+                                                    <IconChevronRight className="h-4 w-4" aria-hidden />
+                                                )}
+                                                Explain
+                                            </button>
+                                        )}
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-900">
+                                                {result.subject.type}:{result.subject.id} → {result.resource.type}:{result.resource.id}#
+                                                {result.permission}
+                                            </p>
+                                            <p className="text-xs text-gray-500">Duration: {result.duration}</p>
+                                        </div>
+                                    </div>
+                                    <span className={`px-3 py-1 rounded text-sm font-medium ${getResultColor(result.result)}`}>
+                                        {getResultIcon(result.result)} {result.result}
+                                    </span>
                                 </div>
-                                <span className={`px-3 py-1 rounded text-sm font-medium ${getResultColor(result.result)}`}>
-                                    {getResultIcon(result.result)} {result.result}
-                                </span>
+                                {isTraceExpanded(result.id) && result.debugTrace?.check && (
+                                    <PermissionDecisionTree trace={result.debugTrace.check} />
+                                )}
                             </div>
                         )}
                     </div>
@@ -451,16 +517,38 @@ const Permissions: NextPage = () => {
                     {checkHistory.length ? (
                         <div className="space-y-2">
                             {checkHistory.map((h) => (
-                                <div key={h.id} className="flex items-center justify-between p-3 border rounded-lg">
-                                    <div>
-                                        <p className="text-sm">
-                                            {h.subject.type}:{h.subject.id} → {h.resource.type}:{h.resource.id}#{h.permission}
-                                        </p>
-                                        <p className="text-xs text-gray-500">{new Date(h.timestamp).toLocaleString()}</p>
+                                <div key={h.id} className="rounded-lg border p-3">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="flex items-start gap-3">
+                                            {hasTrace(h) && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => toggleTrace(h.id)}
+                                                    className="inline-flex items-center gap-1 pt-0.5 text-sm font-medium text-blue-600 hover:text-blue-800"
+                                                    aria-expanded={isTraceExpanded(h.id)}
+                                                >
+                                                    {isTraceExpanded(h.id) ? (
+                                                        <IconChevronDown className="h-4 w-4" aria-hidden />
+                                                    ) : (
+                                                        <IconChevronRight className="h-4 w-4" aria-hidden />
+                                                    )}
+                                                    Explain
+                                                </button>
+                                            )}
+                                            <div>
+                                                <p className="text-sm">
+                                                    {h.subject.type}:{h.subject.id} → {h.resource.type}:{h.resource.id}#{h.permission}
+                                                </p>
+                                                <p className="text-xs text-gray-500">{new Date(h.timestamp).toLocaleString()}</p>
+                                            </div>
+                                        </div>
+                                        <span className={`px-2 py-1 rounded text-xs font-medium ${getResultColor(h.result)}`}>
+                                            {getResultIcon(h.result)} {h.result}
+                                        </span>
                                     </div>
-                                    <span className={`px-2 py-1 rounded text-xs font-medium ${getResultColor(h.result)}`}>
-                                        {getResultIcon(h.result)} {h.result}
-                                    </span>
+                                    {isTraceExpanded(h.id) && h.debugTrace?.check && (
+                                        <PermissionDecisionTree trace={h.debugTrace.check} />
+                                    )}
                                 </div>
                             ))}
                         </div>
