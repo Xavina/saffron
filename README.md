@@ -4,48 +4,32 @@
 
 A modern web interface for managing SpiceDB authorization systems. Built with Next.js and Tailwind CSS.
 
-
-
-## Screenshots
-
-<div align="center">
-   <img src="public/screenshots/saffron_1.png" alt="Dashboard" width="700" />
-   <br />
-   <img src="public/screenshots/saffron_2.png" alt="Schema Editor" width="700" />
-   <br />
-   <img src="public/screenshots/saffron_3.png" alt="Relationships" width="700" />
-   <br />
-   <img src="public/screenshots/saffron_4.png" alt="Permission Check" width="700" />
-   <br />
-   <img src="public/screenshots/saffron_5.png" alt="Terminal" width="700" />
-   <br />
-   <img src="public/screenshots/saffron_6.png" alt="Settings or Misc" width="700" />
-</div>
+**This codebase was forked from [Saffron](https://github.com/dreaminhex/saffron) and enhaced with new features.**
 
 ## Features
 
 1. **Dashboard** - Real-time overview of your SpiceDB instance with stats and activity
+1. **gRPC Integration** - All backend operations use SpiceDB's gRPC API (not HTTP endpoints)
 1. **Schema Management** - Visual and text-based schema editor with validation
 1. **Relationship Management** - CRUD operations with smart dropdowns and search
-1. **Authorization Testing** - Permission checks, expansions, and subject lookups
+1. **Authorization Testing** - Permission checks, expansions, subject lookups, and check evaluations shown as a Decision Tree
 1. **Zed Terminal** - Run `zed` commands against the connected SpiceDB instance
 
 
 ## Table of Contents
 
-1. [Screenshots](#screenshots)
-2. [Features](#features)
-3. [Prerequisites](#prerequisites)
-4. [Quick Start](#quick-start)
-5. [Configuration](#configuration)
-6. [Mock Data](#mock-data)
-7. [Usage](#usage)
-8. [API Endpoints](#api-endpoints)
-9. [Tech Stack](#tech-stack)
-10. [Troubleshooting](#troubleshooting)
-11. [Development](#development)
-12. [License](#license)
-13. [Links](#links)
+1. [Features](#features)
+2. [Prerequisites](#prerequisites)
+3. [Quick Start](#quick-start)
+4. [Configuration](#configuration)
+5. [Mock Data](#mock-data)
+6. [Usage](#usage)
+7. [API Endpoints](#api-endpoints)
+8. [Tech Stack](#tech-stack)
+9. [Troubleshooting](#troubleshooting)
+10. [Development](#development)
+11. [License](#license)
+12. [Links](#links)
 
 ## Prerequisites
 
