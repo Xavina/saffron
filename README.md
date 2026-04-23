@@ -11,6 +11,7 @@ A modern web interface for managing SpiceDB authorization systems. Built with Ne
 1. **Dashboard** - Real-time overview of your SpiceDB instance with stats and activity
 1. **gRPC Integration** - All backend operations use SpiceDB's gRPC API (not HTTP endpoints)
 1. **Schema Management** - Visual and text-based schema editor with validation
+1. **Schema Graph Visualization** - Interactive System Visualization tab with draggable entity layout and relation tooltips
 1. **Relationship Management** - CRUD operations with smart dropdowns and search
 1. **Authorization Testing** - Permission checks, expansions, subject lookups, and check evaluations shown as a Decision Tree
 1. **Zed Terminal** - Run `zed` commands against the connected SpiceDB instance
@@ -242,7 +243,10 @@ The initialization scripts (`init-spicedb.sh` / `init-spicedb.ps1`) load a sampl
 - Navigate to the **Schema** page
 - A default schema has already been loaded - you can edit this from `./examples/spicedb/data/schema.yml`
 - Edit your authorization model using SpiceDB schema language
-- Use the visual view to see parsed namespaces, relations, and permissions
+- Use the **Flat View** tab to see parsed namespaces, relations, and permissions
+- Use the **System Visualization** tab to view your schema as a graph of entities and relations
+- Drag entities in the graph to organize the layout; positions are remembered when you return
+- Relation labels are shown inline with an overflow tooltip for additional relations
 - Save changes directly to SpiceDB
 
 ### 2. Relationship Management
