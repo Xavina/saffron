@@ -5,6 +5,7 @@ import { StreamLanguage } from '@codemirror/language';
 import { vscodeDark } from '@uiw/codemirror-theme-vscode';
 import Layout from "../components/Layout";
 import { IconBulb, IconCircleCheck, IconCode, IconDeviceFloppy, IconReload } from "@tabler/icons-react";
+import SchemaGraph from "@/components/SchemaGraph";
 import Warning from "@/components/Warning";
 
 // Simple SpiceDB schema language mode
@@ -51,7 +52,7 @@ type NamespaceInfo = {
 };
 
 const SchemaPage: NextPage = () => {
-    const [activeTab, setActiveTab] = useState<"editor" | "visual">("editor");
+    const [activeTab, setActiveTab] = useState<"editor" | "visual" | "systemVisualization">("editor");
     const [schema, setSchema] = useState<string>("");
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string>("");
@@ -205,6 +206,15 @@ const SchemaPage: NextPage = () => {
                         >
                             Flat View
                         </button>
+                        <button
+                            onClick={() => setActiveTab("systemVisualization")}
+                            className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "systemVisualization"
+                                ? "border-blue-500 text-blue-600"
+                                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                }`}
+                        >
+                            System Visualization
+                        </button>
                     </nav>
                 </div>
 
@@ -330,6 +340,12 @@ const SchemaPage: NextPage = () => {
                             </div>
                         ))}
                         {!namespaces.length && <p className="text-gray-500">No namespaces parsed yet.</p>}
+                    </div>
+                )}
+
+                {activeTab === "systemVisualization" && (
+                    <div className="bg-white shadow rounded-lg p-4" style={{ height: 'calc(100vh - 320px)' }}>
+                        <SchemaGraph schemaText={schema} />
                     </div>
                 )}
             </div>
