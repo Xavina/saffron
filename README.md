@@ -207,6 +207,47 @@ SPICEDB_INSECURE=true
 
 > **Note:** If you do not set these, the backend will fall back to defaults (`localhost:50051` and `somerandomkeyhere`). Always use `.env.local` for local development.
 
+### Assistant Configuration
+
+The Assistant page uses the GitHub Copilot SDK on the backend and calls the same SpiceDB server-side tools as the rest of the app.
+
+Enable the feature for both the UI and the API routes with a single public flag:
+
+```bash
+NEXT_PUBLIC_ENABLE_ASSISTANT=true
+```
+
+This app intentionally uses only `NEXT_PUBLIC_ENABLE_ASSISTANT` so the browser and server read the same value.
+If the flag is unset or set to `false`, the Assistant navigation entry stays hidden and the Assistant page and API routes remain unavailable.
+
+Set Copilot authentication with one of these environment variables:
+
+```bash
+COPILOT_GITHUB_TOKEN=...
+# or
+GITHUB_TOKEN=...
+# or
+GH_TOKEN=...
+```
+
+Optionally pin a model with `COPILOT_MODEL` or `GITHUB_COPILOT_MODEL`. If neither is set, the assistant uses the host default Copilot model.
+
+For local SpiceDB development, `.env.local` should look like:
+
+```bash
+SPICEDB_ENDPOINT=localhost:50051
+SPICEDB_PRESHARED_KEY=test-key
+SPICEDB_INSECURE=true
+```
+
+For a hosted SpiceDB instance, use the hosted gRPC endpoint and disable insecure mode:
+
+```bash
+SPICEDB_ENDPOINT=https://spicedb.grpc.mcp.test.mimics.cloud:443
+SPICEDB_PRESHARED_KEY=materialise
+SPICEDB_INSECURE=false
+```
+
 ### Docker Compose Services
 
 The `docker-compose.yml` defines three services:
@@ -237,6 +278,24 @@ The initialization scripts (`init-spicedb.sh` / `init-spicedb.ps1`) load a sampl
 - `org1` - Contains all groups and resources
 
 ## Usage
+
+### Assistant
+
+Open the **Assistant** page after setting the Copilot token and SpiceDB connection in `.env.local`.
+
+Verify the backend is ready before using the UI:
+
+```bash
+curl http://localhost:7777/api/spicedb/assistant-status
+curl -X POST http://localhost:7777/api/spicedb/chat \
+   -H 'Content-Type: application/json' \
+   -d '{"message":"Explain the schema in one short paragraph."}'
+curl -N -X POST http://localhost:7777/api/spicedb/chat-stream \
+   -H 'Content-Type: application/json' \
+   -d '{"message":"Explain the schema in one short paragraph."}'
+```
+
+These endpoints should return a healthy assistant status, a normal JSON response, and a streaming response respectively.
 
 ### 1. Schema Management
 

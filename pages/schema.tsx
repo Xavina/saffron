@@ -51,8 +51,12 @@ type NamespaceInfo = {
     permissions: { name: string; expression: string }[];
 };
 
+type SchemaTab = "editor" | "visual" | "systemVisualization";
+
+const SCHEMA_ACTIVE_TAB_STORAGE_KEY = "saffron.schema.active-tab";
+
 const SchemaPage: NextPage = () => {
-    const [activeTab, setActiveTab] = useState<"editor" | "visual" | "systemVisualization">("editor");
+    const [activeTab, setActiveTab] = useState<SchemaTab>("editor");
     const [schema, setSchema] = useState<string>("");
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string>("");
@@ -60,12 +64,21 @@ const SchemaPage: NextPage = () => {
     const [namespaces, setNamespaces] = useState<NamespaceInfo[]>([]);
 
     useEffect(() => {
+        const savedTab = window.localStorage.getItem(SCHEMA_ACTIVE_TAB_STORAGE_KEY);
+        if (savedTab === "editor" || savedTab === "visual" || savedTab === "systemVisualization") {
+            setActiveTab(savedTab);
+        }
+
         loadSchema();
     }, []);
 
     useEffect(() => {
         parseNamespaces();
     }, [schema]);
+
+    useEffect(() => {
+        window.localStorage.setItem(SCHEMA_ACTIVE_TAB_STORAGE_KEY, activeTab);
+    }, [activeTab]);
 
     const loadSchema = async () => {
         setIsLoading(true);
