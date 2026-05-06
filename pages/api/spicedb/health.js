@@ -1,5 +1,4 @@
-import { v1 } from '@authzed/authzed-node';
-import { getSpiceDbEndpoint, getSpiceDbPromiseClient } from '../../../lib/spicedb';
+import { checkSpiceDbGrpcHealth, getSpiceDbEndpoint } from '../../../lib/spicedb';
 
 function withTimeout(promise, timeoutMs) {
     return Promise.race([
@@ -32,14 +31,12 @@ export default async function handler(req, res) {
     }
 
     const spicedbEndpoint = getSpiceDbEndpoint();
-    const client = getSpiceDbPromiseClient();
-
     try {
         const startTime = Date.now();
 
-        await withTimeout(
-            client.readSchema(v1.ReadSchemaRequest.create({})),
-            2000,
+        const grpcHealth = await withTimeout(
+            checkSpiceDbGrpcHealth({ timeoutMs: 1500 }),
+            2100,
         );
 
         const endTime = Date.now();
@@ -53,6 +50,11 @@ export default async function handler(req, res) {
             connected: true,
             responseTime: `${responseTime}ms`,
             spicedbEndpoint,
+            healthProbe: grpcHealth.probe,
+            grpcProbeResult: grpcHealth.result,
+            grpcProbeLatencyMs: grpcHealth.latencyMs,
+            ...(grpcHealth.grpcCode !== undefined ? { grpcCode: grpcHealth.grpcCode } : {}),
+            ...(grpcHealth.grpcMessage ? { grpcMessage: grpcHealth.grpcMessage } : {}),
             timestamp,
         });
     } catch (error) {
@@ -64,6 +66,7 @@ export default async function handler(req, res) {
             connected: false,
             error: error.message,
             spicedbEndpoint,
+            healthProbe: 'grpc-checkPermission',
             timestamp,
         });
     }

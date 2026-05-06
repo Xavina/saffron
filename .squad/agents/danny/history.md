@@ -9,3 +9,4 @@
 ## Learnings
 
 <!-- Append learnings below -->
+- 2026-04-29: For issue #10, the first shipped chat slice should stay deterministic and reuse existing SpiceDB API routes as the tool surface; broader natural-language behavior, if added later, should orchestrate over that layer instead of replacing it.
