@@ -7,6 +7,7 @@ import {
     IconLink,
     IconShieldCheck,
     IconCircleCheck,
+    IconMessageCircle,
     IconLayoutSidebarLeftCollapse,
     IconLayoutSidebarRightCollapse,
     IconSettings,
@@ -17,6 +18,7 @@ import {
     IconBrandGithub,
     IconChevronDown,
 } from "@tabler/icons-react";
+import { isAssistantEnabled } from "@/lib/assistantFeature";
 
 interface LayoutProps {
     children: ReactNode;
@@ -29,6 +31,7 @@ interface NavItem {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
+    const assistantEnabled = isAssistantEnabled();
     const [collapsed, setCollapsed] = useState<boolean>(false); // Always start with false for SSR
     const [isHydrated, setIsHydrated] = useState(false);
 
@@ -61,6 +64,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         { name: "Check", href: "/check", icon: IconCircleCheck },
         { name: "Terminal", href: "/terminal", icon: IconTerminal2 },
     ];
+
+    if (assistantEnabled) {
+        navigation.splice(5, 0, { name: "Assistant", href: "/assistant", icon: IconMessageCircle });
+    }
 
     const isActive = (href: string): boolean =>
         href === "/" ? router.pathname === "/" : router.pathname.startsWith(href);
