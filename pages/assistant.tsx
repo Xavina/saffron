@@ -31,6 +31,8 @@ const STARTER_PROMPTS = [
     "check user:ceo view resource:task1",
     "who-can view task:promserver user",
     "relationships resource:tenant",
+    "best practices for schema design",
+    "example RBAC schema in SpiceDB",
 ];
 
 const DEFAULT_STATUS: AssistantStatus = {
@@ -199,7 +201,7 @@ const AssistantPage: NextPage = () => {
             id: "welcome",
             role: "assistant",
             content: [
-                "Ask about the active SpiceDB model or run one of the supported operations.",
+                "Ask about the active SpiceDB model, official SpiceDB docs and APIs, or run one of the supported operations.",
                 "Examples:",
                 ...STARTER_PROMPTS.map((prompt) => `- ${prompt}`),
             ].join("\n"),
@@ -470,7 +472,7 @@ const AssistantPage: NextPage = () => {
                         Assistant
                     </h2>
                     <p className="text-gray-400">
-                        A task-oriented chat surface for explaining the schema and running direct authorization queries.
+                        A task-oriented chat surface for explaining the schema, searching official SpiceDB guidance, and running direct authorization queries.
                     </p>
                 </div>
                 <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -520,6 +522,8 @@ const AssistantPage: NextPage = () => {
                         <p>{"`check <subject> <permission> <resource>` runs a permission check."}</p>
                         <p>{"`who-can <permission> <resource> <subjectType>` lists matching subjects."}</p>
                         <p>{"`relationships <type:id>` samples stored relationships."}</p>
+                        <p>{"Natural language docs questions search official AuthZed and SpiceDB documentation."}</p>
+                        <p>{"Requests for example schemas or API details use the AuthZed MCP knowledge tools."}</p>
                     </div>
                 </section>
 
@@ -527,7 +531,7 @@ const AssistantPage: NextPage = () => {
                     <div className="border-b border-gray-200 px-6 py-4">
                         <h3 className="text-lg font-semibold text-gray-900">Conversation</h3>
                         <p className="text-sm text-gray-500">
-                            The assistant routes your prompt to schema inspection or the matching SpiceDB operation.
+                            The assistant routes your prompt to live SpiceDB operations or official AuthZed documentation and examples.
                         </p>
                     </div>
 
