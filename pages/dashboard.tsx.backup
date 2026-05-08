@@ -75,11 +75,9 @@ const Dashboard: NextPage = () => {
         setError("");
 
         try {
-            const [statsRes, healthRes, activityRes, healthHistoryRes] = await Promise.all([
+            const [statsRes, healthRes] = await Promise.all([
                 fetch("/api/spicedb/stats", { signal }),
                 fetch("/api/spicedb/health", { signal }),
-                fetch("/api/spicedb/activity", { signal }),
-                fetch("/api/spicedb/health-history", { signal }),
             ]);
 
             if (rid !== requestIdRef.current) return; // a newer request finished already
@@ -94,18 +92,6 @@ const Dashboard: NextPage = () => {
                 const healthData = await healthRes.json();
                 connected = !!healthData.connected;
                 setHealthChecked(true);
-            }
-
-            // Activity (best-effort)
-            if (activityRes.ok) {
-                const activityData = await activityRes.json();
-                setRecentActivity(Array.isArray(activityData.activities) ? activityData.activities : []);
-            }
-
-            // Health History (best-effort)
-            if (healthHistoryRes.ok) {
-                const historyData = await healthHistoryRes.json();
-                setHealthHistory(Array.isArray(historyData.history) ? historyData.history : []);
             }
 
             setStats({

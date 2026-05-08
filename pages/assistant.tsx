@@ -1,7 +1,7 @@
 import type { NextPage } from "next";
 import type { GetServerSideProps } from "next";
 import { useEffect, useRef, useState } from "react";
-import { IconArrowUp, IconMessageCircle, IconSparkles } from "@tabler/icons-react";
+import { IconAlertHexagon, IconArrowUp, IconCircleCheck, IconHelpHexagon, IconMessageCircle } from "@tabler/icons-react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
@@ -34,6 +34,16 @@ const STARTER_PROMPTS = [
     "best practices for schema design",
     "example RBAC schema in SpiceDB",
 ];
+
+const HELP_COMMAND = "/help";
+const HELP_COMMAND_ALIASES = [HELP_COMMAND, "/?"];
+
+const buildHelpResponse = () => ([
+    "Prompt examples you can copy and paste:",
+    ...STARTER_PROMPTS.map((prompt) => `- ${prompt}`),
+    "",
+    "You can also ask natural language docs questions, request example schemas, or ask for API details.",
+].join("\n"));
 
 const DEFAULT_STATUS: AssistantStatus = {
     configured: null,
@@ -104,6 +114,59 @@ const extractStreamDelta = (payload: any) => {
     }
 
     return getString(payload.delta) || getString(payload.content) || getString(payload.reply) || getString(payload.text);
+};
+
+const containsLikelyMarkdown = (content: string): boolean => {
+    if (!content) {
+        return false;
+    }
+
+    const normalizedContent = content.replace(/\r\n?/g, "\n");
+
+    if (/```|~~~/.test(normalizedContent)) {
+        return true;
+    }
+
+    if (/\[[^\]]+\]\([^\)]+\)/.test(normalizedContent)) {
+        return true;
+    }
+
+    if (/(^|[\s([{\"'.,;:!?-])`[^`\n]+`(?=$|[\s)\]}\"'.,;:!?-])/.test(normalizedContent)) {
+        return true;
+    }
+
+    const lines = normalizedContent.split("\n");
+    const atxHeadingPattern = /^\s{0,3}#{1,6}\s+\S/;
+    const setextEqualsPattern = /^\s{0,3}=+\s*$/;
+    const setextDashPattern = /^\s{0,3}-+\s*$/;
+    const blockquotePattern = /^\s{0,3}>\s/;
+    const listPrefixPattern = /^\s{0,3}(?:[-*+]\s+|\d+\.\s+)/;
+    const horizontalRulePattern = /^\s{0,3}(?:-{3,}|\*{3,}|_{3,})\s*$/;
+    const tableSeparatorPattern = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?\s*$/;
+
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+        const line = lines[lineIndex];
+
+        if (
+            atxHeadingPattern.test(line)
+            || blockquotePattern.test(line)
+            || listPrefixPattern.test(line)
+            || horizontalRulePattern.test(line)
+            || tableSeparatorPattern.test(line)
+        ) {
+            return true;
+        }
+
+        if ((setextEqualsPattern.test(line) || setextDashPattern.test(line)) && lineIndex > 0) {
+            const previousLine = lines[lineIndex - 1].trim();
+
+            if (previousLine) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 };
 
 const getMarkdownTone = (role: Message["role"]) => ({
@@ -182,9 +245,13 @@ const getMarkdownComponents = (role: Message["role"]): Components => ({
 
 const MessageContent = ({ content, role }: { content: string; role: Message["role"] }) => (
     <div className="text-sm">
-        <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={getMarkdownComponents(role)}>
-            {content}
-        </ReactMarkdown>
+        {containsLikelyMarkdown(content)
+            ? (
+                <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={getMarkdownComponents(role)}>
+                    {content}
+                </ReactMarkdown>
+            )
+            : <p className="whitespace-pre-wrap break-words leading-7">{content}</p>}
     </div>
 );
 
@@ -195,15 +262,13 @@ const AssistantPage: NextPage = () => {
     const [assistantStatus, setAssistantStatus] = useState<AssistantStatus>(DEFAULT_STATUS);
     const [conversationId, setConversationId] = useState("");
     const messageCounterRef = useRef(0);
-    const textareaRef = useRef<HTMLTextAreaElement | null>(null);
     const [messages, setMessages] = useState<Message[]>([
         {
             id: "welcome",
             role: "assistant",
             content: [
                 "Ask about the active SpiceDB model, official SpiceDB docs and APIs, or run one of the supported operations.",
-                "Examples:",
-                ...STARTER_PROMPTS.map((prompt) => `- ${prompt}`),
+                `Type ${HELP_COMMAND} to get copy-paste prompt examples.`,
             ].join("\n"),
         },
     ]);
@@ -319,11 +384,6 @@ const AssistantPage: NextPage = () => {
         setMessages((currentMessages) => currentMessages.filter((message) => message.id !== messageId));
     };
 
-    const handleStarterPromptClick = (prompt: string) => {
-        setInput(prompt);
-        textareaRef.current?.focus();
-    };
-
     const streamAssistantReply = async (prompt: string, assistantMessageId: string, activeConversationId: string) => {
         const response = await fetch(ASSISTANT_STREAM_ENDPOINT, {
             method: "POST",
@@ -420,6 +480,15 @@ const AssistantPage: NextPage = () => {
             return;
         }
 
+        if (HELP_COMMAND_ALIASES.includes(prompt.toLowerCase())) {
+            const userMessage: Message = { id: nextMessageId(), role: "user", content: prompt };
+            const assistantMessage: Message = { id: nextMessageId(), role: "assistant", content: buildHelpResponse() };
+            setMessages((currentMessages) => [...currentMessages, userMessage, assistantMessage]);
+            setInput("");
+            setError("");
+            return;
+        }
+
         const userMessage: Message = { id: nextMessageId(), role: "user", content: prompt };
         const assistantMessageId = nextMessageId();
         setMessages((currentMessages) => [...currentMessages, userMessage, { id: assistantMessageId, role: "assistant", content: "" }]);
@@ -457,11 +526,34 @@ const AssistantPage: NextPage = () => {
         }
     };
 
-    const statusTone = assistantStatus.configured === true
-        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+    const authStatusLabel = assistantStatus.authConfigured === true
+        ? "configured"
+        : assistantStatus.authConfigured === false
+            ? "missing"
+            : "unknown";
+
+    const assistantConnectivity = assistantStatus.configured === true
+        ? {
+            label: "online",
+            icon: IconCircleCheck,
+            iconTone: "text-emerald-600",
+            ringTone: "border-emerald-200 bg-emerald-50",
+        }
         : assistantStatus.configured === false || assistantStatus.authConfigured === false
-            ? "border-amber-200 bg-amber-50 text-amber-800"
-            : "border-gray-200 bg-gray-50 text-gray-700";
+            ? {
+                label: "offline",
+                icon: IconAlertHexagon,
+                iconTone: "text-amber-700",
+                ringTone: "border-amber-200 bg-amber-50",
+            }
+            : {
+                label: "unknown",
+                icon: IconHelpHexagon,
+                iconTone: "text-gray-600",
+                ringTone: "border-gray-200 bg-gray-50",
+            };
+
+    const AssistantConnectivityIcon = assistantConnectivity.icon;
 
     return (
         <div className="space-y-6">
@@ -470,68 +562,42 @@ const AssistantPage: NextPage = () => {
                     <h2 className="inline-flex items-center gap-2 text-2xl font-bold text-gray-900">
                         <IconMessageCircle className="text-orange-300" size={30} aria-hidden />
                         Assistant
+                        <span className="group/status relative inline-flex">
+                            <span
+                                className={`inline-flex h-7 w-7 items-center justify-center rounded-full border ${assistantConnectivity.ringTone} cursor-help ${assistantConnectivity.iconTone}`}
+                                aria-label={`Assistant connectivity: ${assistantConnectivity.label}`}
+                                tabIndex={0}
+                            >
+                                <AssistantConnectivityIcon size={16} aria-hidden />
+                            </span>
+                            <span
+                                role="tooltip"
+                                className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 w-72 -translate-x-1/2 rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-700 opacity-0 shadow-xl transition duration-150 group-hover/status:translate-y-0 group-hover/status:opacity-100 group-focus-within/status:translate-y-0 group-focus-within/status:opacity-100"
+                            >
+                                <span className="block text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Assistant status</span>
+                                <span className="mt-1 block text-sm text-gray-700">{assistantStatus.message}</span>
+                                <span className="mt-2 flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-gray-600">
+                                    <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-1">Connectivity {assistantConnectivity.label}</span>
+                                    <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-1">Copilot auth {authStatusLabel}</span>
+                                    <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-1">Model {assistantStatus.model}</span>
+                                </span>
+                            </span>
+                        </span>
                     </h2>
                     <p className="text-gray-400">
                         A task-oriented chat surface for explaining the schema, searching official SpiceDB guidance, and running direct authorization queries.
                     </p>
                 </div>
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                    First slice: deterministic intent routing over existing SpiceDB APIs.
-                </div>
-            </div>
-
-            <div className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-sm ${statusTone}`}>
-                <div>
-                    <div className="font-semibold">Assistant status</div>
-                    <div>{assistantStatus.message}</div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em]">
-                    <span className="rounded-full bg-white/80 px-3 py-1">
-                        Copilot auth {assistantStatus.authConfigured === true ? "configured" : assistantStatus.authConfigured === false ? "missing" : "unknown"}
-                    </span>
-                    <span className="rounded-full bg-white/80 px-3 py-1">
-                        Model {assistantStatus.model}
-                    </span>
-                </div>
             </div>
 
             {error && <Warning title="Assistant Problem" error={error} />}
 
-            <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-                <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-                    <div className="mb-4 inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-gray-500">
-                        <IconSparkles size={16} />
-                        Starter Prompts
-                    </div>
-                    <div className="space-y-3">
-                        {STARTER_PROMPTS.map((prompt) => (
-                            <button
-                                key={prompt}
-                                onClick={() => handleStarterPromptClick(prompt)}
-                                disabled={isLoading}
-                                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-left text-sm text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                {prompt}
-                            </button>
-                        ))}
-                    </div>
-                    <div className="mt-5 rounded-xl bg-gray-900 p-4 text-sm text-gray-100">
-                        <p className="font-semibold text-white">Supported intents</p>
-                        <p className="mt-2">`explain schema` summarizes definitions.</p>
-                        <p>{"`explain definition <name>` drills into one object type."}</p>
-                        <p>{"`check <subject> <permission> <resource>` runs a permission check."}</p>
-                        <p>{"`who-can <permission> <resource> <subjectType>` lists matching subjects."}</p>
-                        <p>{"`relationships <type:id>` samples stored relationships."}</p>
-                        <p>{"Natural language docs questions search official AuthZed and SpiceDB documentation."}</p>
-                        <p>{"Requests for example schemas or API details use the AuthZed MCP knowledge tools."}</p>
-                    </div>
-                </section>
-
+            <div>
                 <section className="flex h-[min(70vh,720px)] min-h-[540px] min-w-0 min-h-0 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
                     <div className="border-b border-gray-200 px-6 py-4">
                         <h3 className="text-lg font-semibold text-gray-900">Conversation</h3>
                         <p className="text-sm text-gray-500">
-                            The assistant routes your prompt to live SpiceDB operations or official AuthZed documentation and examples.
+                            The assistant routes your prompt to live SpiceDB operations or official AuthZed documentation and examples. Type {HELP_COMMAND} for copy-paste examples.
                         </p>
                     </div>
 
@@ -558,7 +624,6 @@ const AssistantPage: NextPage = () => {
                     <div className="border-t border-gray-200 bg-white px-6 py-4">
                         <div className="flex items-end gap-3">
                             <textarea
-                                ref={textareaRef}
                                 value={input}
                                 onChange={(event) => setInput(event.target.value)}
                                 onKeyDown={(event) => {
@@ -567,7 +632,7 @@ const AssistantPage: NextPage = () => {
                                         sendMessage();
                                     }
                                 }}
-                                placeholder="Ask about the schema or run a permission query..."
+                                placeholder="Ask about the schema, run a permission query, or type /help..."
                                 className="min-h-[96px] flex-1 resize-none rounded-2xl border border-gray-300 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                             />
                             <button
