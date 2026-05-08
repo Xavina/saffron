@@ -375,7 +375,6 @@ The UI creates several API routes:
 
 - `GET /api/spicedb/stats` - Dashboard statistics
 - `GET /api/spicedb/health` - Connection health check
-- `GET /api/spicedb/activity` - Recent activity feed
 - `GET /api/spicedb/resources` - Available resources and relations
 - `GET|POST /api/spicedb/schema` - Schema management
 - `GET|POST|DELETE /api/spicedb/relationships` - Relationship CRUD

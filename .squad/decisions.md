@@ -17,6 +17,20 @@
 	- Context: The backend and assistant UI both needed a stable conversation id so follow-up prompts could reuse Copilot session memory without adding a separate transcript store.
 	- Constraints: Accept either `sessionId` or `conversationId`, return the active id through both JSON and streaming responses, and replace stale ids with a fresh active session instead of failing the request.
 	- Validation: Two-turn memory validation returned BANANA on both turns when the same session id was reused.
+- 2026-04-29: Keep `POST /api/spicedb/chat` as the existing JSON surface and add two narrow companion routes instead of overloading the original contract.
+	- Owner: Linus
+	- Context: The assistant page already targets separate status and streaming endpoints; dedicated routes avoid breaking existing callers expecting `{ reply }` JSON from the original chat route.
+	- Routes: `GET /api/spicedb/assistant-status` for readiness, auth/runtime state, and model metadata; `POST /api/spicedb/chat/stream` for browser-consumable chunked text streaming.
+	- Constraints: Status should actively probe Copilot runtime and return 503 with clear message when auth or setup is missing; stream failures should fail fast before writing when possible, and close clearly if runtime failure occurs after streaming starts.
+- 2026-04-08: Treat lookup-subject results in the Check UI as nested subject references, reading `subject.object.objectType` and `subject.object.objectId` with fallback to flattened fields.
+	- Owner: Rusty
+	- Context: The lookup-subjects API returns subjects in the same nested shape used elsewhere in the app; previous UI assumed flattened shape, rendering as just `:`.
+	- Resolution: Updated Check UI to correctly read nested object structure, matching API response shape.
+- 2026-04-29: Replace mocked Single Check and Bulk Check flows on the Permissions page with real `POST /api/spicedb/check` calls.
+	- Owner: Rusty
+	- Context: Permissions page needed integration with live SpiceDB checks instead of mocked responses.
+	- Approach: Reused Check page's `permissionship` normalization rules so numeric and string enum responses render consistently across both pages.
+	- Preservation: Kept existing Permissions page structure and local history UX intact by adapting API responses into the page's existing result/history shape.
 
 ## Governance
 

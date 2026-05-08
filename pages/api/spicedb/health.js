@@ -9,22 +9,6 @@ function withTimeout(promise, timeoutMs) {
     ]);
 }
 
-async function recordHealth(connected, responseTime, timestamp) {
-    try {
-        await fetch(`http://localhost:${process.env.PORT || 3000}/api/spicedb/health-history`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                connected,
-                responseTime,
-                timestamp,
-            }),
-        });
-    } catch {
-        // Ignore history tracking errors.
-    }
-}
-
 export default async function handler(req, res) {
     if (req.method !== 'GET') {
         return res.status(405).json({ message: 'Method not allowed' });
@@ -43,8 +27,6 @@ export default async function handler(req, res) {
         const responseTime = endTime - startTime;
         const timestamp = new Date().toISOString();
 
-        await recordHealth(true, responseTime, timestamp);
-
         return res.status(200).json({
             status: 'healthy',
             connected: true,
@@ -59,7 +41,6 @@ export default async function handler(req, res) {
         });
     } catch (error) {
         const timestamp = new Date().toISOString();
-        await recordHealth(false, null, timestamp);
 
         return res.status(200).json({
             status: 'unhealthy',
