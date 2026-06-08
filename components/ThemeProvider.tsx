@@ -34,15 +34,17 @@ export default function ThemeProvider({ children, configuredTheme }: ThemeProvid
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const queryTheme = searchParams.get("theme");
-    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
-    const activeTheme = resolvePreferredTheme(queryTheme, storedTheme || configuredTheme);
+    // configuredTheme (from ACTIVE_THEME env var) is the baseline.
+    // The querystring can override it per-request, but localStorage is NOT consulted —
+    // otherwise a stale stored value would mask changes to ACTIVE_THEME.
+    const activeTheme = resolvePreferredTheme(queryTheme, configuredTheme);
     const mediaQuery = window.matchMedia(COLOR_MODE_QUERY);
 
     const syncModeFromSystem = () => {
       applyThemeAttributes(activeTheme, resolveSystemColorMode());
     };
 
-    window.localStorage.setItem(THEME_STORAGE_KEY, activeTheme);
+    window.localStorage.removeItem(THEME_STORAGE_KEY); // clear any stale stored theme
     syncModeFromSystem();
 
     const onModeChange = () => syncModeFromSystem();
