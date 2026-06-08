@@ -1,6 +1,7 @@
 {
   "displayName": "Saffron",
   "logo": "logo.png",
+  "favicon": "favicon.png",
   "colors": {
     "light": {
       "color-scheme": "light",

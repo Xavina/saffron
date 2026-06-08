@@ -1,6 +1,7 @@
 {
   "displayName": "Materialise",
   "logo": "logo.svg",
+  "favicon": "favicon.ico",
   "colors": {
     "light": {
       "color-scheme": "light",
