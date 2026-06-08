@@ -1,4 +1,6 @@
-export { DISCOVERED_THEMES as THEMES, type DiscoveredThemeName as ThemeName } from "@/lib/generated/themes";
+import { DISCOVERED_THEMES as THEMES, type DiscoveredThemeName as ThemeName } from "@/lib/generated/themes";
+export { THEMES };
+export type { ThemeName };
 export type ThemeColorMode = "light" | "dark";
 
 export const DEFAULT_THEME: ThemeName = "saffron";
