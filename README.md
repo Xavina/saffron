@@ -23,14 +23,15 @@ A modern web interface for managing SpiceDB authorization systems. Built with Ne
 2. [Prerequisites](#prerequisites)
 3. [Quick Start](#quick-start)
 4. [Configuration](#configuration)
-5. [Mock Data](#mock-data)
-6. [Usage](#usage)
-7. [API Endpoints](#api-endpoints)
-8. [Tech Stack](#tech-stack)
-9. [Troubleshooting](#troubleshooting)
-10. [Development](#development)
-11. [License](#license)
-12. [Links](#links)
+5. [UI Themes](#ui-themes)
+6. [Mock Data](#mock-data)
+7. [Usage](#usage)
+8. [API Endpoints](#api-endpoints)
+9. [Tech Stack](#tech-stack)
+10. [Troubleshooting](#troubleshooting)
+11. [Development](#development)
+12. [License](#license)
+13. [Links](#links)
 
 ## Prerequisites
 
@@ -218,6 +219,7 @@ NEXT_PUBLIC_ENABLE_ASSISTANT=true
 ```
 
 This app intentionally uses only `NEXT_PUBLIC_ENABLE_ASSISTANT` so the browser and server read the same value.
+
 If the flag is unset or set to `false`, the Assistant navigation entry stays hidden and the Assistant page and API routes remain unavailable.
 
 Set Copilot authentication with one of these environment variables:
@@ -247,6 +249,24 @@ SPICEDB_ENDPOINT=https://spicedb.grpc.mcp.test.mimics.cloud:443
 SPICEDB_PRESHARED_KEY=materialise
 SPICEDB_INSECURE=false
 ```
+
+### UI Themes
+
+The UI now uses theme tokens. The active theme is set on the root element with:
+
+```html
+<html data-theme="saffron|materialise" data-color-mode="light|dark">
+```
+
+Theme values live in `styles/globals.css` under:
+
+- `:root[data-theme="saffron"][data-color-mode="light"]`
+- `:root[data-theme="saffron"][data-color-mode="dark"]`
+- `:root[data-theme="materialise"][data-color-mode="light"]`
+- `:root[data-theme="materialise"][data-color-mode="dark"]`
+
+Preview `materialise` instantly in browser with `?theme=materialise` (for example: `http://localhost:7777/dashboard?theme=materialise`).  
+The selected theme persists in localStorage under `saffron.ui.theme`.
 
 ### Docker Compose Services
 

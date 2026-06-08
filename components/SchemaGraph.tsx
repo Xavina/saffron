@@ -155,14 +155,14 @@ function normalizeRelationLabels(labels: string[]): string[] {
 
 function getRelationColor(relationLabel: string): string {
   const palette = [
-    "#1d4ed8",
-    "#0f766e",
-    "#b45309",
-    "#be123c",
-    "#6d28d9",
-    "#1e40af",
-    "#0f766e",
-    "#9f1239",
+    "var(--saffron-schema-graph-relation-1)",
+    "var(--saffron-schema-graph-relation-2)",
+    "var(--saffron-schema-graph-relation-3)",
+    "var(--saffron-schema-graph-relation-4)",
+    "var(--saffron-schema-graph-relation-5)",
+    "var(--saffron-schema-graph-relation-6)",
+    "var(--saffron-schema-graph-relation-7)",
+    "var(--saffron-schema-graph-relation-8)",
   ];
 
   let hash = 0;
@@ -280,7 +280,7 @@ function SchemaRelationEdge({
             style={{
               transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
               pointerEvents: "all",
-              backgroundColor: "#ffffff",
+              backgroundColor: "var(--saffron-schema-graph-surface)",
               opacity: 1,
               mixBlendMode: "normal",
             }}
@@ -298,7 +298,7 @@ function SchemaRelationEdge({
               <div
                 className="pointer-events-none absolute left-1/2 top-full z-[10000] mt-2 hidden w-max max-w-[360px] -translate-x-1/2 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-xl group-hover:block"
                 style={{
-                  backgroundColor: "#ffffff",
+                  backgroundColor: "var(--saffron-schema-graph-surface)",
                   opacity: 1,
                   mixBlendMode: "normal",
                 }}
@@ -329,14 +329,14 @@ const edgeTypes: EdgeTypes = {
 
 function getNodeColor(name: string): string {
   const palette = [
-    "#dbeafe",
-    "#dcfce7",
-    "#fef3c7",
-    "#fee2e2",
-    "#ede9fe",
-    "#cffafe",
-    "#fde68a",
-    "#fbcfe8",
+    "var(--saffron-schema-graph-node-1)",
+    "var(--saffron-schema-graph-node-2)",
+    "var(--saffron-schema-graph-node-3)",
+    "var(--saffron-schema-graph-node-4)",
+    "var(--saffron-schema-graph-node-5)",
+    "var(--saffron-schema-graph-node-6)",
+    "var(--saffron-schema-graph-node-7)",
+    "var(--saffron-schema-graph-node-8)",
   ];
 
   let hash = 0;
@@ -409,7 +409,7 @@ function generateSchemaEdges(definitions: SchemaDefinition[]): Edge<SchemaEdgeDa
           source: def.name,
           target: typeRef.path,
           markerEnd: { type: MarkerType.ArrowClosed },
-          style: { stroke: "#64748b", strokeWidth: 1.5 },
+          style: { stroke: "var(--saffron-schema-graph-stroke)", strokeWidth: 1.5 },
           data: { relationLabels: [label] },
         });
       });
@@ -451,10 +451,10 @@ export default function SchemaGraph({ schemaText }: SchemaGraphProps) {
       position: { x: 0, y: 0 },
       style: {
         background: getNodeColor(def.name),
-        border: "1px solid #cbd5e1",
+        border: "1px solid var(--saffron-schema-graph-node-border)",
         borderRadius: "10px",
         padding: "8px 10px",
-        color: "#0f172a",
+        color: "var(--saffron-schema-graph-node-text)",
         fontWeight: 600,
         minWidth: 180,
         textAlign: "center",
@@ -525,9 +525,11 @@ export default function SchemaGraph({ schemaText }: SchemaGraphProps) {
         <Controls />
         <MiniMap
           nodeColor={(node) =>
-            typeof node.style?.background === "string" ? node.style.background : "#e2e8f0"
+            typeof node.style?.background === "string"
+              ? node.style.background
+              : "var(--saffron-schema-graph-node-fallback)"
           }
-          maskColor="rgba(2, 6, 23, 0.06)"
+          maskColor="var(--saffron-schema-graph-minimap-mask)"
         />
       </ReactFlow>
     </div>

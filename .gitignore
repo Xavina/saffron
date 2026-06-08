@@ -51,3 +51,7 @@ next-env.d.ts
 
 .vs
 .env.local
+
+# Generated theme files
+styles/generated-themes.css
+lib/generated/
