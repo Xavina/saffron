@@ -2,9 +2,7 @@ import { Html, Head, Main, NextScript } from "next/document";
 
 let activeThemeFavicon = "/saffron.png";
 try {
-    const themesConfig = require("../themes.config.json");
-    const activeTheme: string = themesConfig?.activeTheme || "saffron";
-    // THEME_META is generated at prebuild — import it so favicon matches active theme
+    const activeTheme = process.env.ACTIVE_THEME || "saffron";
     const { THEME_META } = require("../lib/generated/themes");
     activeThemeFavicon = THEME_META[activeTheme]?.favicon ?? activeThemeFavicon;
 } catch {
