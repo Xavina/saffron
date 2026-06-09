@@ -18,11 +18,11 @@ import {
     IconBrandGithub,
     IconChevronDown,
 } from "@tabler/icons-react";
-import { isAssistantEnabled } from "@/lib/assistantFeature";
 import { THEME_STORAGE_KEY, resolvePreferredTheme, type ThemeName } from "@/lib/theme";
 
 interface LayoutProps {
     children: ReactNode;
+    enableAssistant?: boolean;
 }
 
 interface NavItem {
@@ -31,8 +31,8 @@ interface NavItem {
     icon: React.ElementType; // Tabler icon component
 }
 
-const Layout: React.FC<LayoutProps> = ({ children }) => {
-    const assistantEnabled = isAssistantEnabled();
+const Layout: React.FC<LayoutProps> = ({ children, enableAssistant }) => {
+    const assistantEnabled = enableAssistant ?? false;
     const [collapsed, setCollapsed] = useState<boolean>(false); // Always start with false for SSR
     const [isHydrated, setIsHydrated] = useState(false);
     const [activeTheme, setActiveTheme] = useState<ThemeName>("saffron");

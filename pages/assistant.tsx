@@ -5,7 +5,6 @@ import { IconAlertHexagon, IconArrowUp, IconCircleCheck, IconHelpHexagon, IconMe
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
-import { isAssistantEnabled } from "@/lib/assistantFeature";
 import Warning from "@/components/Warning";
 
 type Message = {
@@ -656,7 +655,8 @@ const AssistantPage: NextPage = () => {
 export default AssistantPage;
 
 export const getServerSideProps: GetServerSideProps = async () => {
-    if (!isAssistantEnabled()) {
+    const assistantEnabled = process.env.ENABLE_ASSISTANT === 'true' || process.env.ENABLE_ASSISTANT === '1';
+    if (!assistantEnabled) {
         return { notFound: true };
     }
 
