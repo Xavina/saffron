@@ -18,7 +18,8 @@ import {
     IconBrandGithub,
     IconChevronDown,
 } from "@tabler/icons-react";
-import { THEME_STORAGE_KEY, resolvePreferredTheme, type ThemeName } from "@/lib/theme";
+import { THEME_META } from "@/lib/generated/themes";
+import { useTheme } from "@/components/ThemeProvider";
 
 interface LayoutProps {
     children: ReactNode;
@@ -35,7 +36,7 @@ const Layout: React.FC<LayoutProps> = ({ children, enableAssistant }) => {
     const assistantEnabled = enableAssistant ?? false;
     const [collapsed, setCollapsed] = useState<boolean>(false); // Always start with false for SSR
     const [isHydrated, setIsHydrated] = useState(false);
-    const [activeTheme, setActiveTheme] = useState<ThemeName>("saffron");
+    const { activeTheme } = useTheme();
 
     useEffect(() => {
         // This runs only on client after hydration
@@ -50,17 +51,6 @@ const Layout: React.FC<LayoutProps> = ({ children, enableAssistant }) => {
         if (!isHydrated) return; // Don't save to localStorage until hydrated
         localStorage.setItem("saffron.sidebar", collapsed ? "collapsed" : "expanded");
     }, [collapsed, isHydrated]);
-
-    useEffect(() => {
-        if (typeof window === "undefined") {
-            return;
-        }
-
-        const searchParams = new URLSearchParams(window.location.search);
-        const queryTheme = searchParams.get("theme");
-        const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
-        setActiveTheme(resolvePreferredTheme(queryTheme, storedTheme));
-    }, []);
 
     // Mobile drawer
     const [mobileOpen, setMobileOpen] = useState(false);
@@ -86,9 +76,10 @@ const Layout: React.FC<LayoutProps> = ({ children, enableAssistant }) => {
         href === "/" ? router.pathname === "/" : router.pathname.startsWith(href);
 
     const isMaterialiseTheme = activeTheme === "materialise";
-    const brandName = isMaterialiseTheme ? "Materialise" : "Saffron";
-    const brandLogoSrc = isMaterialiseTheme ? "/materialise-logo.svg" : "/saffron.png";
-    const brandLogoAlt = isMaterialiseTheme ? "Materialise logo" : "Saffron logo";
+    const themeMeta = THEME_META[activeTheme];
+    const brandName = themeMeta.displayName;
+    const brandLogoSrc = themeMeta.logo;
+    const brandLogoAlt = `${themeMeta.displayName} logo`;
     const mobileLogoClass = isMaterialiseTheme ? "h-8 w-auto" : "w-8 h-8";
     const desktopLogoClass = isMaterialiseTheme
         ? `transition-all duration-200 ${collapsed ? "h-6 w-auto" : "h-8 w-auto"}`
