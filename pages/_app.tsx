@@ -1,12 +1,12 @@
-import type { AppProps } from "next/app";
+import App, { type AppProps, type AppContext } from "next/app";
 import Layout from "../components/Layout";
 import Head from "next/head";
 import "../styles/globals.css";
 import ThemeProvider from "@/components/ThemeProvider";
 
-const configuredTheme = process.env.NEXT_PUBLIC_ACTIVE_THEME;
+type MyAppProps = AppProps & { configuredTheme?: string };
 
-export default function MyApp({ Component, pageProps }: AppProps) {
+export default function MyApp({ Component, pageProps, configuredTheme }: MyAppProps) {
     return (
         <ThemeProvider configuredTheme={configuredTheme}>
             <Layout>
@@ -16,3 +16,11 @@ export default function MyApp({ Component, pageProps }: AppProps) {
         </ThemeProvider>
     );
 }
+
+MyApp.getInitialProps = async (appContext: AppContext) => {
+    const appProps = await App.getInitialProps(appContext);
+    return {
+        ...appProps,
+        configuredTheme: process.env.ACTIVE_THEME,
+    };
+};
