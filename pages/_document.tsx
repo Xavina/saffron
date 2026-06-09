@@ -2,7 +2,7 @@ import { Html, Head, Main, NextScript } from "next/document";
 
 let activeThemeFavicon = "/saffron.png";
 try {
-    const activeTheme = process.env.ACTIVE_THEME || "saffron";
+    const activeTheme = process.env.NEXT_PUBLIC_ACTIVE_THEME || "saffron";
     const { THEME_META } = require("../lib/generated/themes");
     activeThemeFavicon = THEME_META[activeTheme]?.favicon ?? activeThemeFavicon;
 } catch {
