@@ -2,7 +2,7 @@ import type { NextPage } from "next";
 import { JSX, useState } from "react";
 import Layout from "../components/Layout";
 import Warning from "@/components/Warning";
-import { IconAlertHexagon, IconCircleCheck, IconExclamationCircle, IconHelpHexagon, IconRefreshDot } from "@tabler/icons-react";
+import { IconAlertHexagon, IconChevronDown, IconChevronRight, IconCircleCheck, IconExclamationCircle, IconHelpHexagon, IconRefreshDot } from "@tabler/icons-react";
 import PermissionDecisionTree, { type PermissionDebugTrace } from "@/components/PermissionDecisionTree";
 
 type CheckForm = { resource: string; permission: string; subject: string; context: string };
@@ -57,6 +57,7 @@ const CheckPage: NextPage = () => {
     const [activeTab, setActiveTab] = useState<"check" | "expand" | "lookup">("check");
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [result, setResult] = useState<CheckResult | null>(null);
+    const [isCheckTraceExpanded, setIsCheckTraceExpanded] = useState(false);
     const [error, setError] = useState<string>("");
 
     const performCheck = async () => {
@@ -68,6 +69,7 @@ const CheckPage: NextPage = () => {
         setIsLoading(true);
         setError("");
         setResult(null);
+        setIsCheckTraceExpanded(false);
 
         try {
             const [resourceType, resourceId] = checkForm.resource.split(":");
@@ -619,7 +621,24 @@ const CheckPage: NextPage = () => {
                         <div className="mt-4">
                             {renderPermissionQuery(result.query, result.permissionship)}
                         </div>
-                        {result.debugTrace?.check && <PermissionDecisionTree trace={result.debugTrace.check} />}
+                        {result.debugTrace?.check && (
+                            <div className="mt-4 space-y-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsCheckTraceExpanded((prev) => !prev)}
+                                    className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-800"
+                                    aria-expanded={isCheckTraceExpanded}
+                                >
+                                    {isCheckTraceExpanded ? (
+                                        <IconChevronDown className="h-4 w-4" aria-hidden />
+                                    ) : (
+                                        <IconChevronRight className="h-4 w-4" aria-hidden />
+                                    )}
+                                    Explain
+                                </button>
+                                {isCheckTraceExpanded && <PermissionDecisionTree trace={result.debugTrace.check} />}
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

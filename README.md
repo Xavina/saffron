@@ -244,7 +244,7 @@ For a hosted SpiceDB instance, use the hosted gRPC endpoint and disable insecure
 
 ```bash
 SPICEDB_ENDPOINT=https://spicedb.grpc.mcp.test.mimics.cloud:443
-SPICEDB_PRESHARED_KEY=materialise
+SPICEDB_PRESHARED_KEY=authzed
 SPICEDB_INSECURE=false
 ```
 
@@ -253,19 +253,17 @@ SPICEDB_INSECURE=false
 The UI now uses theme tokens. The active theme is set on the root element with:
 
 ```html
-<html data-theme="saffron|materialise|authzed" data-color-mode="light|dark">
+<html data-theme="saffron|authzed" data-color-mode="light|dark">
 ```
 
 Theme values live in `styles/globals.css` under:
 
 - `:root[data-theme="saffron"][data-color-mode="light"]`
 - `:root[data-theme="saffron"][data-color-mode="dark"]`
-- `:root[data-theme="materialise"][data-color-mode="light"]`
-- `:root[data-theme="materialise"][data-color-mode="dark"]`
 - `:root[data-theme="authzed"][data-color-mode="light"]`
 - `:root[data-theme="authzed"][data-color-mode="dark"]`
 
-Preview `materialise` instantly in browser with `?theme=materialise` (for example: `http://localhost:7777/dashboard?theme=materialise`).  
+Preview `authzed` instantly in browser with `?theme=authzed` (for example: `http://localhost:7777/dashboard?theme=authzed`).  
 The selected theme persists in localStorage under `saffron.ui.theme`.
 
 ### Docker Compose Services

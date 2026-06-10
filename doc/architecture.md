@@ -35,7 +35,7 @@ The app uses file-based routes under `pages/` for primary domains:
 
 - **Schema graph positions** are persisted in IndexedDB (`components/SchemaGraph.tsx`) with migration support from legacy localStorage.
 - **Dashboard stats** are cache-hydrated from localStorage and then refreshed from API, with background exact-count upgrades.
-- **Theme selection** is resolved in `lib/theme.ts`, including backward-compatible aliases (`company -> materialise`, `authed -> authzed`).
+- **Theme selection** is resolved in `lib/theme.ts`, including backward-compatible aliases (`company -> authzed`, `authed -> authzed`).
 
 ### 3.3 UX behavior
 
