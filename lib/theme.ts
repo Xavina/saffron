@@ -10,6 +10,7 @@ export const THEME_STORAGE_KEY = "saffron.ui.theme";
 
 const LEGACY_THEME_ALIASES: Record<string, ThemeName> = {
   company: "materialise",
+  authed: "authzed",
 };
 
 const isKnownThemeValue = (value: string): boolean => {

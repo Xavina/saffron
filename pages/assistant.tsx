@@ -6,6 +6,7 @@ import ReactMarkdown, { type Components } from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import Warning from "@/components/Warning";
+import { isAssistantEnabled } from "@/lib/assistantFeature";
 
 type Message = {
     id: string;
@@ -655,8 +656,7 @@ const AssistantPage: NextPage = () => {
 export default AssistantPage;
 
 export const getServerSideProps: GetServerSideProps = async () => {
-    const assistantEnabled = process.env.ENABLE_ASSISTANT === 'true' || process.env.ENABLE_ASSISTANT === '1';
-    if (!assistantEnabled) {
+    if (!isAssistantEnabled()) {
         return { notFound: true };
     }
 

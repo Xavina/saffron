@@ -15,6 +15,7 @@
 
 # next.js
 /.next/
+/.next-wsl/
 /out/
 
 # production
@@ -56,3 +57,7 @@ next-env.d.ts
 styles/generated-themes.css
 lib/generated/
 public/themes/
+
+./themes/materialise
+
+.playwright-mcp/

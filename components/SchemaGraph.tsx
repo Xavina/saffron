@@ -22,7 +22,11 @@ export interface SchemaGraphProps {
 }
 
 const MAX_VISIBLE_RELATIONS = 3;
-const SCHEMA_GRAPH_LAYOUTS_STORAGE_KEY = "saffron.schema-graph.layouts.v1";
+const LEGACY_SCHEMA_GRAPH_LAYOUTS_STORAGE_KEY = "saffron.schema-graph.layouts.v1";
+const SCHEMA_GRAPH_LAYOUTS_DB_NAME = "saffron-schema-graph";
+const SCHEMA_GRAPH_LAYOUTS_STORE_NAME = "layouts";
+const SCHEMA_GRAPH_LAYOUTS_RECORD_KEY = "schema-layouts-v1";
+const SCHEMA_GRAPH_LAYOUTS_DB_VERSION = 1;
 
 type SchemaEdgeData = {
   relationLabels: string[];
@@ -184,13 +188,13 @@ function getLayoutStorageKey(definitions: SchemaDefinition[]): string {
     .join("|");
 }
 
-function readStoredLayouts(): StoredLayouts {
+function readLegacyStoredLayouts(): StoredLayouts {
   if (typeof window === "undefined") {
     return {};
   }
 
   try {
-    const rawValue = window.localStorage.getItem(SCHEMA_GRAPH_LAYOUTS_STORAGE_KEY);
+    const rawValue = window.localStorage.getItem(LEGACY_SCHEMA_GRAPH_LAYOUTS_STORAGE_KEY);
     if (!rawValue) {
       return {};
     }
@@ -206,21 +210,101 @@ function readStoredLayouts(): StoredLayouts {
   }
 }
 
-function saveStoredLayout(layoutKey: string, layout: StoredLayout) {
+function saveLegacyStoredLayouts(layouts: StoredLayouts) {
   if (typeof window === "undefined") {
     return;
   }
 
   try {
-    const currentLayouts = readStoredLayouts();
-    const nextLayouts: StoredLayouts = {
-      ...currentLayouts,
-      [layoutKey]: layout,
-    };
-
-    window.localStorage.setItem(SCHEMA_GRAPH_LAYOUTS_STORAGE_KEY, JSON.stringify(nextLayouts));
+    window.localStorage.setItem(
+      LEGACY_SCHEMA_GRAPH_LAYOUTS_STORAGE_KEY,
+      JSON.stringify(layouts),
+    );
   } catch {
     // Ignore storage errors and continue with in-memory positions.
+  }
+}
+
+function openLayoutsDatabase(): Promise<IDBDatabase | null> {
+  if (typeof window === "undefined" || !("indexedDB" in window)) {
+    return Promise.resolve(null);
+  }
+
+  return new Promise((resolve) => {
+    const request = window.indexedDB.open(
+      SCHEMA_GRAPH_LAYOUTS_DB_NAME,
+      SCHEMA_GRAPH_LAYOUTS_DB_VERSION,
+    );
+
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(SCHEMA_GRAPH_LAYOUTS_STORE_NAME)) {
+        db.createObjectStore(SCHEMA_GRAPH_LAYOUTS_STORE_NAME);
+      }
+    };
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => resolve(null);
+    request.onblocked = () => resolve(null);
+  });
+}
+
+async function readStoredLayouts(): Promise<StoredLayouts> {
+  const db = await openLayoutsDatabase();
+  if (!db) {
+    return readLegacyStoredLayouts();
+  }
+
+  try {
+    const layouts = await new Promise<unknown>((resolve) => {
+      const tx = db.transaction(SCHEMA_GRAPH_LAYOUTS_STORE_NAME, "readonly");
+      const store = tx.objectStore(SCHEMA_GRAPH_LAYOUTS_STORE_NAME);
+      const request = store.get(SCHEMA_GRAPH_LAYOUTS_RECORD_KEY);
+
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => resolve(undefined);
+      tx.onabort = () => resolve(undefined);
+    });
+
+    if (layouts && typeof layouts === "object") {
+      const parsedLayouts = layouts as StoredLayouts;
+      if (Object.keys(parsedLayouts).length > 0) {
+        return parsedLayouts;
+      }
+    }
+
+    const legacyLayouts = readLegacyStoredLayouts();
+    if (Object.keys(legacyLayouts).length > 0) {
+      await writeStoredLayouts(legacyLayouts);
+      return legacyLayouts;
+    }
+
+    return {};
+  } finally {
+    db.close();
+  }
+}
+
+async function writeStoredLayouts(layouts: StoredLayouts): Promise<void> {
+  const db = await openLayoutsDatabase();
+  if (!db) {
+    saveLegacyStoredLayouts(layouts);
+    return;
+  }
+
+  try {
+    await new Promise<void>((resolve) => {
+      const tx = db.transaction(SCHEMA_GRAPH_LAYOUTS_STORE_NAME, "readwrite");
+      const store = tx.objectStore(SCHEMA_GRAPH_LAYOUTS_STORE_NAME);
+
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+      tx.onabort = () => resolve();
+
+      store.put(layouts, SCHEMA_GRAPH_LAYOUTS_RECORD_KEY);
+    });
+  } finally {
+    db.close();
   }
 }
 
@@ -468,9 +552,23 @@ export default function SchemaGraph({ schemaText }: SchemaGraphProps) {
   const [statefulNodes, setNodesState, onNodesChange] = useNodesState(nodes);
 
   useEffect(() => {
-    const layouts = readStoredLayouts();
-    const restoredNodes = applyStoredLayout(nodes, layouts[layoutStorageKey]);
-    setNodesState(restoredNodes);
+    let cancelled = false;
+
+    const restoreStoredLayout = async () => {
+      const layouts = await readStoredLayouts();
+      if (cancelled) {
+        return;
+      }
+
+      const restoredNodes = applyStoredLayout(nodes, layouts[layoutStorageKey]);
+      setNodesState(restoredNodes);
+    };
+
+    void restoreStoredLayout();
+
+    return () => {
+      cancelled = true;
+    };
   }, [nodes, layoutStorageKey, setNodesState]);
 
   const persistNodePositions = useCallback(
@@ -483,18 +581,23 @@ export default function SchemaGraph({ schemaText }: SchemaGraphProps) {
         return;
       }
 
-      const storedLayouts = readStoredLayouts();
-      const currentLayout = storedLayouts[layoutStorageKey] ?? {};
+      void (async () => {
+        const storedLayouts = await readStoredLayouts();
+        const currentLayout = storedLayouts[layoutStorageKey] ?? {};
 
-      const mergedLayout = nodesToPersist.reduce<StoredLayout>((result, currentNode) => {
-        result[currentNode.id] = {
-          x: currentNode.position.x,
-          y: currentNode.position.y,
-        };
-        return result;
-      }, { ...currentLayout });
+        const mergedLayout = nodesToPersist.reduce<StoredLayout>((result, currentNode) => {
+          result[currentNode.id] = {
+            x: currentNode.position.x,
+            y: currentNode.position.y,
+          };
+          return result;
+        }, { ...currentLayout });
 
-      saveStoredLayout(layoutStorageKey, mergedLayout);
+        await writeStoredLayouts({
+          ...storedLayouts,
+          [layoutStorageKey]: mergedLayout,
+        });
+      })();
     },
     [layoutStorageKey],
   );

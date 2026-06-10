@@ -212,13 +212,11 @@ SPICEDB_INSECURE=true
 
 The Assistant page uses the GitHub Copilot SDK on the backend and calls the same SpiceDB server-side tools as the rest of the app.
 
-Enable the feature for both the UI and the API routes with a single public flag:
+Enable the feature for both the UI and the API routes:
 
 ```bash
-NEXT_PUBLIC_ENABLE_ASSISTANT=true
+ENABLE_ASSISTANT=true
 ```
-
-This app intentionally uses only `NEXT_PUBLIC_ENABLE_ASSISTANT` so the browser and server read the same value.
 
 If the flag is unset or set to `false`, the Assistant navigation entry stays hidden and the Assistant page and API routes remain unavailable.
 
@@ -255,7 +253,7 @@ SPICEDB_INSECURE=false
 The UI now uses theme tokens. The active theme is set on the root element with:
 
 ```html
-<html data-theme="saffron|materialise" data-color-mode="light|dark">
+<html data-theme="saffron|materialise|authzed" data-color-mode="light|dark">
 ```
 
 Theme values live in `styles/globals.css` under:
@@ -264,6 +262,8 @@ Theme values live in `styles/globals.css` under:
 - `:root[data-theme="saffron"][data-color-mode="dark"]`
 - `:root[data-theme="materialise"][data-color-mode="light"]`
 - `:root[data-theme="materialise"][data-color-mode="dark"]`
+- `:root[data-theme="authzed"][data-color-mode="light"]`
+- `:root[data-theme="authzed"][data-color-mode="dark"]`
 
 Preview `materialise` instantly in browser with `?theme=materialise` (for example: `http://localhost:7777/dashboard?theme=materialise`).  
 The selected theme persists in localStorage under `saffron.ui.theme`.
@@ -324,7 +324,7 @@ These endpoints should return a healthy assistant status, a normal JSON response
 - Edit your authorization model using SpiceDB schema language
 - Use the **Flat View** tab to see parsed namespaces, relations, and permissions
 - Use the **System Visualization** tab to view your schema as a graph of entities and relations
-- Drag entities in the graph to organize the layout; positions are remembered when you return
+- Drag entities in the graph to organize the layout; positions are remembered in browser storage (IndexedDB) when you return from the same browser profile
 - Relation labels are shown inline with an overflow tooltip for additional relations
 - Save changes directly to SpiceDB
 

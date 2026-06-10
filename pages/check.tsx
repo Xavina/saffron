@@ -3,6 +3,7 @@ import { JSX, useState } from "react";
 import Layout from "../components/Layout";
 import Warning from "@/components/Warning";
 import { IconAlertHexagon, IconCircleCheck, IconExclamationCircle, IconHelpHexagon, IconRefreshDot } from "@tabler/icons-react";
+import PermissionDecisionTree, { type PermissionDebugTrace } from "@/components/PermissionDecisionTree";
 
 type CheckForm = { resource: string; permission: string; subject: string; context: string };
 type ExpandForm = { resource: string; permission: string; context: string };
@@ -21,6 +22,9 @@ type CheckResult =
         checked_at?: string;
         query: string;
         duration?: number;
+        debugTrace?: {
+            check?: PermissionDebugTrace;
+        };
     }
     | {
         type: "expand";
@@ -76,6 +80,7 @@ const CheckPage: NextPage = () => {
                 resource: { object_type: resourceType, object_id: resourceId },
                 permission: checkForm.permission,
                 subject: { object: { object_type: subjectType, object_id: subjectId } },
+                withTracing: true,
             };
 
             if (checkForm.context) {
@@ -102,6 +107,7 @@ const CheckPage: NextPage = () => {
                 checked_at: data.checked_at,
                 query: `${checkForm.subject} → ${checkForm.resource}#${checkForm.permission}`,
                 duration: undefined,
+                debugTrace: data.debugTrace || data.debug_trace,
             });
         } catch (err: any) {
             setError(err.message || "Failed to perform permission check");
@@ -613,6 +619,7 @@ const CheckPage: NextPage = () => {
                         <div className="mt-4">
                             {renderPermissionQuery(result.query, result.permissionship)}
                         </div>
+                        {result.debugTrace?.check && <PermissionDecisionTree trace={result.debugTrace.check} />}
                     </div>
                 </div>
             )}
