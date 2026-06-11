@@ -73,6 +73,15 @@
 	- Content: All 496 lines moved verbatim; no information lost; back-links on each doc file for easy navigation.
 	- Trade-offs: Navigation requires jumping between files (vs. single reference) but improves maintainability and discoverability for growing teams. Common pattern in mature open-source projects.
 	- Validation: Content preserved, links working (relative paths), markdown well-formed, cognitive load reduced for new users.
+- 2026-06-12: Remove Permissions page — consolidate all authorization testing under Check page.
+	- Owner: Rusty
+	- Requested by: Xavier Navarro
+	- Context: Permissions page simplified to single-check-only workflow after Bulk Check moved to Check page; single permission check is redundant with Check page, which already provides Permission Check, Bulk Check, Expand Permission, and Lookup Subjects.
+	- Decision: Remove `pages/permissions.tsx` entirely, consolidate all authorization testing workflows under the Check page.
+	- Implementation: Deleted permissions page, removed `/permissions` route from Layout.tsx and _app.tsx, removed unused IconShieldCheck import, updated doc/architecture.md.
+	- Preservation: Components/routes referencing "permission" concept (PermissionDecisionTree, schema.tsx, api/spicedb/resources.js) remain intact; these reference SpiceDB's permission schema concept, not the removed page.
+	- Validation: Build succeeds with no TypeScript errors; grep confirms no dangling route references.
+	- Trade-offs: Reduces navigation surface (one fewer page) but clarifies domain ownership and simplifies user journey for authorization testing.
 
 ## Governance
 

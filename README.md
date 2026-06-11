@@ -13,6 +13,7 @@ A modern web interface for managing SpiceDB authorization systems. Built with Ne
 1. **Schema Graph Visualization** - Interactive System Visualization tab with draggable entity layout and relation tooltips
 1. **Relationship Management** - CRUD operations with smart dropdowns and search
 1. **Authorization Testing** - Permission checks, expansions, subject lookups, and check evaluations shown as a Decision Tree
+1. **AI Assistant** - Ask questions about your SpiceDB schema and authorization model (powered by GitHub Copilot SDK, opt-in via `ENABLE_ASSISTANT` flag)
 1. **Zed Terminal** - Run `zed` commands against the connected SpiceDB instance
 
 ## Quick Start
@@ -67,7 +68,7 @@ For other installation options (Local Development, Manual SpiceDB), see [Install
 
 - **[Installation Guide](doc/installation.md)** - Detailed setup instructions for Docker Compose, local development, and manual SpiceDB configuration
 - **[Configuration Guide](doc/configuration.md)** - Environment variables, Assistant setup, UI themes, Docker services, and mock data
-- **[Usage Guide](doc/usage.md)** - How to use the UI: Schema Management, Relationships, Authorization Testing, and Terminal
+- **[Usage Guide](doc/usage.md)** - How to use the UI: Schema Management, Relationships, Authorization Testing, Assistant, and Terminal
 - **[API Endpoints](doc/api.md)** - Reference for all backend API routes
 - **[Development Guide](doc/development.md)** - Tech stack, development commands, Docker commands, and service connection details
 - **[Troubleshooting Guide](doc/troubleshooting.md)** - Common issues and solutions
