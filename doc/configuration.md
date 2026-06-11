@@ -70,7 +70,7 @@ SPICEDB_INSECURE=true
 For a hosted SpiceDB instance, use the hosted gRPC endpoint and disable insecure mode:
 
 ```bash
-SPICEDB_ENDPOINT=https://spicedb.grpc.mcp.test.mimics.cloud:443
+SPICEDB_ENDPOINT=https://<your-spicedb-host>:443
 SPICEDB_PRESHARED_KEY=authzed
 SPICEDB_INSECURE=false
 ```
