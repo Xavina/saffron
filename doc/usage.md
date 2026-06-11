@@ -90,4 +90,7 @@ Use the **Check** page for permission testing with the following features:
 
 ## Terminal Usage
 
-- Use the **Terminal** page for executing `zed` queries against the database
+Use the **Terminal** page for executing `zed` queries against SpiceDB:
+- Execute constrained `zed` CLI commands (schema/relationship/permission subcommands only)
+- View command output directly in the interface
+- Test schema and relationship operations in a command-line style interface

@@ -30,7 +30,14 @@ cd saffron
 npm install
 ```
 
-**2. Start the services**
+**2. Enable full stack in docker-compose.yml**
+
+The default `docker-compose.yml` runs only the Saffron UI. To run the full stack:
+- Open `docker-compose.yml`
+- Uncomment the `postgres` and `spicedb` service definitions
+- Uncomment the `depends_on` section in the `saffron` service
+
+**3. Start the services**
 
 ```bash
 docker-compose up -d
@@ -38,13 +45,13 @@ docker-compose up -d
 
 This starts PostgreSQL, SpiceDB, and the Saffron UI containers.
 
-**3. Run database migrations** (first time only)
+**4. Run database migrations** (first time only)
 
 ```bash
 docker-compose exec spicedb spicedb datastore migrate head --datastore-engine postgres --datastore-conn-uri "postgres://spicedb:spicedb@postgres:5432/spicedb?sslmode=disable"
 ```
 
-**4. Initialize with mock data**
+**5. Initialize with mock data**
 
 **Windows (PowerShell):**
 
@@ -58,7 +65,7 @@ docker-compose exec spicedb spicedb datastore migrate head --datastore-engine po
 chmod +x init-spicedb.sh && ./init-spicedb.sh
 ```
 
-**5. Open the app**
+**6. Open the app**
 
 Open [http://localhost:7777](http://localhost:7777) in your browser.
 

@@ -21,7 +21,14 @@ The easiest way to get started with both SpiceDB and Saffron:
    npm install
    ```
 
-2. **Start everything with Docker Compose**
+2. **Enable full stack in docker-compose.yml**
+
+   The default `docker-compose.yml` only runs the Saffron UI. To run PostgreSQL and SpiceDB as well:
+   - Open `docker-compose.yml`
+   - Uncomment the `postgres` and `spicedb` service definitions
+   - Uncomment the `depends_on` section in the `saffron` service
+
+3. **Start everything with Docker Compose**
 
    ```bash
    docker-compose up -d
@@ -32,13 +39,13 @@ The easiest way to get started with both SpiceDB and Saffron:
    - SpiceDB (authorization service)
    - Saffron UI
 
-3. **Run database migrations (first time only)**
+4. **Run database migrations (first time only)**
 
    ```bash
    docker-compose exec spicedb spicedb datastore migrate head --datastore-engine postgres --datastore-conn-uri "postgres://spicedb:spicedb@postgres:5432/spicedb?sslmode=disable"
    ```
 
-4. **Initialize with mock data**
+5. **Initialize with mock data**
 
    **Windows (PowerShell):**
    ```powershell
@@ -51,7 +58,7 @@ The easiest way to get started with both SpiceDB and Saffron:
    ./init-spicedb.sh
    ```
 
-5. **Access the application**
+6. **Access the application**
 
    Open [http://localhost:7777](http://localhost:7777)
 
@@ -67,19 +74,24 @@ For development, run SpiceDB in Docker but Saffron locally:
    npm install
    ```
 
-2. **Start only SpiceDB services**
+2. **Enable SpiceDB services in docker-compose.yml**
+
+   - Open `docker-compose.yml`
+   - Uncomment the `postgres` and `spicedb` service definitions
+
+3. **Start only SpiceDB services**
 
    ```bash
    docker-compose up -d postgres spicedb
    ```
 
-3. **Run database migrations (first time only)**
+4. **Run database migrations (first time only)**
 
    ```bash
    docker-compose exec spicedb spicedb datastore migrate head --datastore-engine postgres --datastore-conn-uri "postgres://spicedb:spicedb@postgres:5432/spicedb?sslmode=disable"
    ```
 
-4. **Initialize SpiceDB with mock data**
+5. **Initialize SpiceDB with mock data**
 
    **Windows (PowerShell):**
    ```powershell
@@ -92,13 +104,13 @@ For development, run SpiceDB in Docker but Saffron locally:
    ./init-spicedb.sh
    ```
 
-5. **Run Saffron locally**
+6. **Run Saffron locally**
 
    ```bash
    npm run dev
    ```
 
-   The `.env.local` file is already configured to connect to the correct SpiceDB HTTP and gRPC endpoints. If you change ports or run SpiceDB elsewhere, update this file accordingly.
+   The `.env.local` file is already configured to connect to the correct SpiceDB gRPC endpoint. If you change ports or run SpiceDB elsewhere, update this file accordingly.
 
    Open [http://localhost:7777](http://localhost:7777)
 
