@@ -5,7 +5,6 @@ import {
     IconLayoutDashboard,
     IconCode,
     IconLink,
-    IconShieldCheck,
     IconCircleCheck,
     IconMessageCircle,
     IconLayoutSidebarLeftCollapse,
@@ -18,10 +17,12 @@ import {
     IconBrandGithub,
     IconChevronDown,
 } from "@tabler/icons-react";
-import { isAssistantEnabled } from "@/lib/assistantFeature";
+import { THEME_META } from "@/lib/generated/themes";
+import { useTheme } from "@/components/ThemeProvider";
 
 interface LayoutProps {
     children: ReactNode;
+    enableAssistant?: boolean;
 }
 
 interface NavItem {
@@ -30,10 +31,11 @@ interface NavItem {
     icon: React.ElementType; // Tabler icon component
 }
 
-const Layout: React.FC<LayoutProps> = ({ children }) => {
-    const assistantEnabled = isAssistantEnabled();
+const Layout: React.FC<LayoutProps> = ({ children, enableAssistant }) => {
+    const assistantEnabled = enableAssistant ?? false;
     const [collapsed, setCollapsed] = useState<boolean>(false); // Always start with false for SSR
     const [isHydrated, setIsHydrated] = useState(false);
+    const { activeTheme } = useTheme();
 
     useEffect(() => {
         // This runs only on client after hydration
@@ -60,7 +62,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         { name: "Dashboard", href: "/dashboard", icon: IconLayoutDashboard },
         { name: "Schema", href: "/schema", icon: IconCode },
         { name: "Relationships", href: "/relationships", icon: IconLink },
-        { name: "Permissions", href: "/permissions", icon: IconShieldCheck },
         { name: "Check", href: "/check", icon: IconCircleCheck },
         { name: "Terminal", href: "/terminal", icon: IconTerminal2 },
     ];
@@ -71,6 +72,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
     const isActive = (href: string): boolean =>
         href === "/" ? router.pathname === "/" : router.pathname.startsWith(href);
+
+    const usesStandardBrandTypography = activeTheme === "authzed";
+    const themeMeta = THEME_META[activeTheme];
+    const brandName = themeMeta.displayName;
+    const brandLogoSrc = themeMeta.logo;
+    const brandLogoAlt = `${themeMeta.displayName} logo`;
+    const mobileLogoClass = "w-8 h-8";
+    const desktopLogoClass = `transition-all duration-200 ${collapsed ? "w-6 h-6" : "w-8 h-8"}`;
+    const mobileBrandClass = usesStandardBrandTypography ? "text-xl font-semibold text-gray-900" : "text-xl text-purple-800 cursive";
+    const desktopBrandClass = usesStandardBrandTypography ? "ml-2 text-2xl font-semibold text-gray-900" : "ml-2 mt-3 text-3xl text-white-800 cursive";
+    const collapsedHeaderBrandClass = usesStandardBrandTypography ? "ml-4 mt-2 text-lg font-semibold text-gray-900" : "ml-4 mt-2 cursive";
 
     // Main padding depends on desktop collapsed state
     const mainPad = collapsed ? "lg:pl-16" : "lg:pl-64";
@@ -118,9 +130,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
                         <div className="flex items-center space-x-2">
                             <div className="w-10 h-10 flex items-center justify-center">
-                                <img src="/saffron.png" alt="Saffron logo" className="w-8 h-8" />
+                                <img src={brandLogoSrc} alt={brandLogoAlt} className={mobileLogoClass} />
                             </div>
-                            <span className="text-xl text-purple-800 cursive">Saffron</span>
+                            <span className={mobileBrandClass}>{brandName}</span>
                         </div>
                         <button
                             onClick={() => setMobileOpen(false)}
@@ -142,9 +154,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200">
                     <div className="flex items-center">
                         <div className={`flex items-center justify-center transition-all duration-200 ${collapsed ? 'w-8 h-8' : 'w-10 h-10'}`}>
-                            <img src="/saffron.png" alt="Saffron logo" className={`transition-all duration-200 ${collapsed ? 'w-6 h-6' : 'w-8 h-8'}`} />
+                            <img src={brandLogoSrc} alt={brandLogoAlt} className={desktopLogoClass} />
                         </div>
-                        {!collapsed && <span className="ml-2 mt-3 text-3xl text-white-800 cursive">Saffron</span>}
+                        {!collapsed && <span className={desktopBrandClass}>{brandName}</span>}
                     </div>
                     {/* Collapse/Uncollapse */}
                     {!collapsed && (
@@ -181,8 +193,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         <div className="flex justify-between h-16">
 
                             {collapsed && (
-                                <div className="flex items-center ml-4 mt-2 cursive">
-                                    Saffron
+                                <div className="flex items-center">
+                                    <span className={collapsedHeaderBrandClass}>{brandName}</span>
                                 </div>
                             )}
 

@@ -199,7 +199,6 @@ function TraceNode({ trace, depth, path }: { trace: PermissionDebugTrace; depth:
                                         {normalizePermissionType(trace.permissionType)}
                                     </span>
                                 </div>
-                                {trace.source && <div>Source: {trace.source}</div>}
                                 {trace.caveatEvaluationInfo?.caveatName && (
                                     <div>
                                         Caveat: {trace.caveatEvaluationInfo.caveatName}

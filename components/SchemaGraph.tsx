@@ -22,7 +22,11 @@ export interface SchemaGraphProps {
 }
 
 const MAX_VISIBLE_RELATIONS = 3;
-const SCHEMA_GRAPH_LAYOUTS_STORAGE_KEY = "saffron.schema-graph.layouts.v1";
+const LEGACY_SCHEMA_GRAPH_LAYOUTS_STORAGE_KEY = "saffron.schema-graph.layouts.v1";
+const SCHEMA_GRAPH_LAYOUTS_DB_NAME = "saffron-schema-graph";
+const SCHEMA_GRAPH_LAYOUTS_STORE_NAME = "layouts";
+const SCHEMA_GRAPH_LAYOUTS_RECORD_KEY = "schema-layouts-v1";
+const SCHEMA_GRAPH_LAYOUTS_DB_VERSION = 1;
 
 type SchemaEdgeData = {
   relationLabels: string[];
@@ -155,14 +159,14 @@ function normalizeRelationLabels(labels: string[]): string[] {
 
 function getRelationColor(relationLabel: string): string {
   const palette = [
-    "#1d4ed8",
-    "#0f766e",
-    "#b45309",
-    "#be123c",
-    "#6d28d9",
-    "#1e40af",
-    "#0f766e",
-    "#9f1239",
+    "var(--saffron-schema-graph-relation-1)",
+    "var(--saffron-schema-graph-relation-2)",
+    "var(--saffron-schema-graph-relation-3)",
+    "var(--saffron-schema-graph-relation-4)",
+    "var(--saffron-schema-graph-relation-5)",
+    "var(--saffron-schema-graph-relation-6)",
+    "var(--saffron-schema-graph-relation-7)",
+    "var(--saffron-schema-graph-relation-8)",
   ];
 
   let hash = 0;
@@ -184,13 +188,13 @@ function getLayoutStorageKey(definitions: SchemaDefinition[]): string {
     .join("|");
 }
 
-function readStoredLayouts(): StoredLayouts {
+function readLegacyStoredLayouts(): StoredLayouts {
   if (typeof window === "undefined") {
     return {};
   }
 
   try {
-    const rawValue = window.localStorage.getItem(SCHEMA_GRAPH_LAYOUTS_STORAGE_KEY);
+    const rawValue = window.localStorage.getItem(LEGACY_SCHEMA_GRAPH_LAYOUTS_STORAGE_KEY);
     if (!rawValue) {
       return {};
     }
@@ -206,21 +210,101 @@ function readStoredLayouts(): StoredLayouts {
   }
 }
 
-function saveStoredLayout(layoutKey: string, layout: StoredLayout) {
+function saveLegacyStoredLayouts(layouts: StoredLayouts) {
   if (typeof window === "undefined") {
     return;
   }
 
   try {
-    const currentLayouts = readStoredLayouts();
-    const nextLayouts: StoredLayouts = {
-      ...currentLayouts,
-      [layoutKey]: layout,
-    };
-
-    window.localStorage.setItem(SCHEMA_GRAPH_LAYOUTS_STORAGE_KEY, JSON.stringify(nextLayouts));
+    window.localStorage.setItem(
+      LEGACY_SCHEMA_GRAPH_LAYOUTS_STORAGE_KEY,
+      JSON.stringify(layouts),
+    );
   } catch {
     // Ignore storage errors and continue with in-memory positions.
+  }
+}
+
+function openLayoutsDatabase(): Promise<IDBDatabase | null> {
+  if (typeof window === "undefined" || !("indexedDB" in window)) {
+    return Promise.resolve(null);
+  }
+
+  return new Promise((resolve) => {
+    const request = window.indexedDB.open(
+      SCHEMA_GRAPH_LAYOUTS_DB_NAME,
+      SCHEMA_GRAPH_LAYOUTS_DB_VERSION,
+    );
+
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(SCHEMA_GRAPH_LAYOUTS_STORE_NAME)) {
+        db.createObjectStore(SCHEMA_GRAPH_LAYOUTS_STORE_NAME);
+      }
+    };
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => resolve(null);
+    request.onblocked = () => resolve(null);
+  });
+}
+
+async function readStoredLayouts(): Promise<StoredLayouts> {
+  const db = await openLayoutsDatabase();
+  if (!db) {
+    return readLegacyStoredLayouts();
+  }
+
+  try {
+    const layouts = await new Promise<unknown>((resolve) => {
+      const tx = db.transaction(SCHEMA_GRAPH_LAYOUTS_STORE_NAME, "readonly");
+      const store = tx.objectStore(SCHEMA_GRAPH_LAYOUTS_STORE_NAME);
+      const request = store.get(SCHEMA_GRAPH_LAYOUTS_RECORD_KEY);
+
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => resolve(undefined);
+      tx.onabort = () => resolve(undefined);
+    });
+
+    if (layouts && typeof layouts === "object") {
+      const parsedLayouts = layouts as StoredLayouts;
+      if (Object.keys(parsedLayouts).length > 0) {
+        return parsedLayouts;
+      }
+    }
+
+    const legacyLayouts = readLegacyStoredLayouts();
+    if (Object.keys(legacyLayouts).length > 0) {
+      await writeStoredLayouts(legacyLayouts);
+      return legacyLayouts;
+    }
+
+    return {};
+  } finally {
+    db.close();
+  }
+}
+
+async function writeStoredLayouts(layouts: StoredLayouts): Promise<void> {
+  const db = await openLayoutsDatabase();
+  if (!db) {
+    saveLegacyStoredLayouts(layouts);
+    return;
+  }
+
+  try {
+    await new Promise<void>((resolve) => {
+      const tx = db.transaction(SCHEMA_GRAPH_LAYOUTS_STORE_NAME, "readwrite");
+      const store = tx.objectStore(SCHEMA_GRAPH_LAYOUTS_STORE_NAME);
+
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+      tx.onabort = () => resolve();
+
+      store.put(layouts, SCHEMA_GRAPH_LAYOUTS_RECORD_KEY);
+    });
+  } finally {
+    db.close();
   }
 }
 
@@ -280,7 +364,7 @@ function SchemaRelationEdge({
             style={{
               transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
               pointerEvents: "all",
-              backgroundColor: "#ffffff",
+              backgroundColor: "var(--saffron-schema-graph-surface)",
               opacity: 1,
               mixBlendMode: "normal",
             }}
@@ -298,7 +382,7 @@ function SchemaRelationEdge({
               <div
                 className="pointer-events-none absolute left-1/2 top-full z-[10000] mt-2 hidden w-max max-w-[360px] -translate-x-1/2 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-xl group-hover:block"
                 style={{
-                  backgroundColor: "#ffffff",
+                  backgroundColor: "var(--saffron-schema-graph-surface)",
                   opacity: 1,
                   mixBlendMode: "normal",
                 }}
@@ -329,14 +413,14 @@ const edgeTypes: EdgeTypes = {
 
 function getNodeColor(name: string): string {
   const palette = [
-    "#dbeafe",
-    "#dcfce7",
-    "#fef3c7",
-    "#fee2e2",
-    "#ede9fe",
-    "#cffafe",
-    "#fde68a",
-    "#fbcfe8",
+    "var(--saffron-schema-graph-node-1)",
+    "var(--saffron-schema-graph-node-2)",
+    "var(--saffron-schema-graph-node-3)",
+    "var(--saffron-schema-graph-node-4)",
+    "var(--saffron-schema-graph-node-5)",
+    "var(--saffron-schema-graph-node-6)",
+    "var(--saffron-schema-graph-node-7)",
+    "var(--saffron-schema-graph-node-8)",
   ];
 
   let hash = 0;
@@ -409,7 +493,7 @@ function generateSchemaEdges(definitions: SchemaDefinition[]): Edge<SchemaEdgeDa
           source: def.name,
           target: typeRef.path,
           markerEnd: { type: MarkerType.ArrowClosed },
-          style: { stroke: "#64748b", strokeWidth: 1.5 },
+          style: { stroke: "var(--saffron-schema-graph-stroke)", strokeWidth: 1.5 },
           data: { relationLabels: [label] },
         });
       });
@@ -451,10 +535,10 @@ export default function SchemaGraph({ schemaText }: SchemaGraphProps) {
       position: { x: 0, y: 0 },
       style: {
         background: getNodeColor(def.name),
-        border: "1px solid #cbd5e1",
+        border: "1px solid var(--saffron-schema-graph-node-border)",
         borderRadius: "10px",
         padding: "8px 10px",
-        color: "#0f172a",
+        color: "var(--saffron-schema-graph-node-text)",
         fontWeight: 600,
         minWidth: 180,
         textAlign: "center",
@@ -468,9 +552,23 @@ export default function SchemaGraph({ schemaText }: SchemaGraphProps) {
   const [statefulNodes, setNodesState, onNodesChange] = useNodesState(nodes);
 
   useEffect(() => {
-    const layouts = readStoredLayouts();
-    const restoredNodes = applyStoredLayout(nodes, layouts[layoutStorageKey]);
-    setNodesState(restoredNodes);
+    let cancelled = false;
+
+    const restoreStoredLayout = async () => {
+      const layouts = await readStoredLayouts();
+      if (cancelled) {
+        return;
+      }
+
+      const restoredNodes = applyStoredLayout(nodes, layouts[layoutStorageKey]);
+      setNodesState(restoredNodes);
+    };
+
+    void restoreStoredLayout();
+
+    return () => {
+      cancelled = true;
+    };
   }, [nodes, layoutStorageKey, setNodesState]);
 
   const persistNodePositions = useCallback(
@@ -483,18 +581,23 @@ export default function SchemaGraph({ schemaText }: SchemaGraphProps) {
         return;
       }
 
-      const storedLayouts = readStoredLayouts();
-      const currentLayout = storedLayouts[layoutStorageKey] ?? {};
+      void (async () => {
+        const storedLayouts = await readStoredLayouts();
+        const currentLayout = storedLayouts[layoutStorageKey] ?? {};
 
-      const mergedLayout = nodesToPersist.reduce<StoredLayout>((result, currentNode) => {
-        result[currentNode.id] = {
-          x: currentNode.position.x,
-          y: currentNode.position.y,
-        };
-        return result;
-      }, { ...currentLayout });
+        const mergedLayout = nodesToPersist.reduce<StoredLayout>((result, currentNode) => {
+          result[currentNode.id] = {
+            x: currentNode.position.x,
+            y: currentNode.position.y,
+          };
+          return result;
+        }, { ...currentLayout });
 
-      saveStoredLayout(layoutStorageKey, mergedLayout);
+        await writeStoredLayouts({
+          ...storedLayouts,
+          [layoutStorageKey]: mergedLayout,
+        });
+      })();
     },
     [layoutStorageKey],
   );
@@ -525,9 +628,11 @@ export default function SchemaGraph({ schemaText }: SchemaGraphProps) {
         <Controls />
         <MiniMap
           nodeColor={(node) =>
-            typeof node.style?.background === "string" ? node.style.background : "#e2e8f0"
+            typeof node.style?.background === "string"
+              ? node.style.background
+              : "var(--saffron-schema-graph-node-fallback)"
           }
-          maskColor="rgba(2, 6, 23, 0.06)"
+          maskColor="var(--saffron-schema-graph-minimap-mask)"
         />
       </ReactFlow>
     </div>

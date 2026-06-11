@@ -5,8 +5,8 @@ import { IconAlertHexagon, IconArrowUp, IconCircleCheck, IconHelpHexagon, IconMe
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
-import { isAssistantEnabled } from "@/lib/assistantFeature";
 import Warning from "@/components/Warning";
+import { isAssistantEnabled } from "@/lib/assistantFeature";
 
 type Message = {
     id: string;
@@ -97,6 +97,8 @@ const getConversationId = (value: unknown) => {
 const getConversationIdFromHeaders = (headers: Headers) => (
     getString(headers.get("x-conversation-id"))
     || getString(headers.get("x-session-id"))
+    || getString(headers.get("x-copilot-conversation-id"))
+    || getString(headers.get("x-copilot-session-id"))
 );
 
 const buildChatRequestBody = (prompt: string, conversationId: string) => ({
@@ -601,7 +603,7 @@ const AssistantPage: NextPage = () => {
                         </p>
                     </div>
 
-                    <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-[linear-gradient(180deg,#fff_0%,#f8fafc_100%)] px-6 py-6">
+                    <div className="assistant-conversation-gradient min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-6">
                         {messages.map((message, index) => (
                             <div
                                 key={message.id || `${message.role}-${index}`}

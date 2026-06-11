@@ -31,6 +31,88 @@
 	- Context: Permissions page needed integration with live SpiceDB checks instead of mocked responses.
 	- Approach: Reused Check page's `permissionship` normalization rules so numeric and string enum responses render consistently across both pages.
 	- Preservation: Kept existing Permissions page structure and local history UX intact by adapting API responses into the page's existing result/history shape.
+- 2026-06-11: Move Bulk Check from Permissions page to Check page.
+	- Owner: Rusty
+	- Context: Bulk checking is conceptually closer to other check operations (Permission Check, Expand Permission, Lookup Subjects) than to the permissions overview.
+	- Implementation: Ported BulkCheckForm type, bulkCheckForm state, and performBulkCheck handler to Check page; added "Bulk Check" tab positioned immediately after "Permission Check" tab; simplified Permissions page to single-check-only workflow.
+	- Validation: Build completed with zero TypeScript errors; no linting issues.
+	- Trade-offs: Permissions page now has only one function; Check page navigation expanded from 3 to 4 tabs.
+- 2026-06-09T12:30: Never use the NEXT_PUBLIC_ prefix on any environment variable.
+	- Owner: Fernando (via Copilot user directive)
+	- Context: User-requested standard for team memory
+	- Constraint: All env vars remain server-side; pass values to the client through props/server rendering instead.
+- 2026-04-30: Theme Discovery Schema — auto-discoverable theme system with folder-per-theme and build-time generation.
+	- Owner: Danny
+	- Context: Saffron had hardcoded `THEMES` tuple and CSS variable blocks; adding a theme required touching multiple files.
+	- Solution: Each theme lives in `themes/{name}/` with `theme.json` manifest. Root `themes.config.json` declares server-side default.
+	- Schema: `theme.json` has `displayName`, `logo`, and both `colors.light` and `colors.dark` (mandatory) with flat token names (prefix stripped at build time).
+	- Rationale: Flat keys map 1:1 to CSS vars (simpler), mandatory light+dark prevents partial theme bugs, folder-per-theme scales to assets.
+	- Trade-offs: Every theme fully specified (more boilerplate) vs optional dark override (fewer bugs).
+- 2025-01-21: Theme Build Script — auto-discover and generate CSS/TS at build time.
+	- Owner: Linus
+	- Context: Implementation of theme discovery system.
+	- Solution: `scripts/generate-themes.js` auto-discovers themes from `themes/*/theme.json`, generates CSS (`styles/generated-themes.css`) with `:root[data-theme="X"][data-color-mode="Y"]` selectors, generates TypeScript (`lib/generated/themes.ts`) with `DISCOVERED_THEMES` array.
+	- Constraints: CSS variables use `--saffron-*` prefix regardless of theme name; script skips invalid themes with warnings; runs as `prebuild` step.
+	- Trade-offs: Auto-discovery (no manual registration) vs. all themes must follow identical schema (per-theme prefixes future work).
+- 2026-04-29: Frontend Theme Wiring — consume auto-discovered themes and server config.
+	- Owner: Rusty
+	- Context: Implementation of frontend integration for discovery system.
+	- Solution: `lib/theme.ts` imports from `lib/generated/themes.ts`, `styles/globals.css` imports generated CSS, `ThemeProvider.tsx` accepts `configuredTheme` prop, `_app.tsx` reads `themes.config.json`.
+	- Constraints: Build script must generate before frontend builds; theme config optional with graceful fallback; theme resolution priority preserved.
+	- Next: Remove hardcoded theme blocks from `globals.css` once generated file confirmed.
+- 2026-05-12: Remap shell and theme-demo utility classes to theme CSS variables.
+	- Owner: Rusty
+	- Context: Materialise skin updated tokens but shared shell still rendered Tailwind utilities (gray backgrounds, purple accents).
+	- Decision: Remap specific utilities in `styles/globals.css` (`text-gray-*`, `border-gray-300`, hover/active states) to theme CSS variables instead of component rewrites.
+	- Rationale: Utility layer is the controlling seam; targeted remap keeps changes small, makes skin visibly affect shell, avoids broad component churn.
+- 2026-06-12: README Documentation Restructure — split monolithic README into lean landing page + 6 focused doc files.
+	- Owner: Danny
+	- Requested by: Xavier Navarro
+	- Context: Root README had grown to 496 lines covering features, prerequisites, installation, configuration, usage, API, tech stack, development, troubleshooting, and license. New users faced cognitive overload.
+	- Solution: Lean README (55 lines) with features, one-liner Docker quick-start, and documentation index. Six focused doc files under `doc/`: `installation.md`, `configuration.md`, `usage.md`, `api.md`, `development.md`, `troubleshooting.md`.
+	- Content: All 496 lines moved verbatim; no information lost; back-links on each doc file for easy navigation.
+	- Trade-offs: Navigation requires jumping between files (vs. single reference) but improves maintainability and discoverability for growing teams. Common pattern in mature open-source projects.
+	- Validation: Content preserved, links working (relative paths), markdown well-formed, cognitive load reduced for new users.
+- 2026-06-12: Remove Permissions page — consolidate all authorization testing under Check page.
+	- Owner: Rusty
+	- Requested by: Xavier Navarro
+	- Context: Permissions page simplified to single-check-only workflow after Bulk Check moved to Check page; single permission check is redundant with Check page, which already provides Permission Check, Bulk Check, Expand Permission, and Lookup Subjects.
+	- Decision: Remove `pages/permissions.tsx` entirely, consolidate all authorization testing workflows under the Check page.
+	- Implementation: Deleted permissions page, removed `/permissions` route from Layout.tsx and _app.tsx, removed unused IconShieldCheck import, updated doc/architecture.md.
+	- Preservation: Components/routes referencing "permission" concept (PermissionDecisionTree, schema.tsx, api/spicedb/resources.js) remain intact; these reference SpiceDB's permission schema concept, not the removed page.
+	- Validation: Build succeeds with no TypeScript errors; grep confirms no dangling route references.
+	- Trade-offs: Reduces navigation surface (one fewer page) but clarifies domain ownership and simplifies user journey for authorization testing.
+- 2026-01-21: **Security Audit: Committed Secrets Review**
+	- Owner: Linus
+	- Requested by: Xavier Navarro
+	- Verdict: MEDIUM severity — `.env` files (root, examples) are git-tracked and contain a 64-char hex PSK (`31d4092f…d8a94`) and default database/pgAdmin credentials. Root cause: `.gitignore:35` rule `#.env*` is commented out.
+	- Verified findings:
+		- `.env` (tracked): `SPICEDB_PRESHARED_KEY=31d4092f…d8a94` (64-char hex)
+		- `examples/spicedb/.env` (tracked): Same PSK as `SPICEDB_GRPC_PRESHARED_KEY`
+		- `examples/postgres/.env` (tracked): `POSTGRES_PASSWORD=docker` + `postgres://postgres:docker@…` connection string
+		- `examples/pgadmin/.env` (tracked): `PGADMIN_DEFAULT_PASSWORD=docker`
+		- `.gitignore:35`: Rule `#.env*` is commented out
+	- Code quality: Safe — all production code uses `process.env.*`, no hardcoded secrets in source files.
+	- External keys: None found (GitHub, AWS, OpenAI, Anthropic tokens absent).
+	- CORRECTION (Coordinator Verified): The initial claim that `.env.local` was in git history exposing `*.mimics.cloud` hostnames and a `materialise` PSK is INCORRECT. Verification shows `.env.local` is NOT tracked and NOT in git history. The real `mimics.cloud` hostname exposure is in `doc/configuration.md:73` (a documentation example endpoint), not a leaked env file.
+	- Recommendations: (1) Confirm if `31d4092f…d8a94` PSK is real — if yes, rotate immediately; (2) Uncomment `.gitignore:35` to prevent future `.env` commits; (3) Consider git history scrub (out of scope for read-only audit).
+- 2026-06-11: 1.0.0 Release and Version Strategy
+	- Owner: Danny
+	- Requested by: Xavier Navarro
+	- Context: First stable release of the enhanced fork consolidating four enhancement vectors: framework modernization (Next.js 15, React 19, TypeScript 5.9, Tailwind 4), AI Assistant (GitHub Copilot SDK + AuthZed MCP), visualization (schema graph + Permission Decision Tree), theming + documentation (auto-discoverable themes + lean README + focused `/doc` guides).
+	- Decision: Use `1.0.0` (not 2.0.0) to signal the first stable feature-complete release and establish clean baseline for semantic versioning. 2.0.0 would imply breaking a prior 1.x line that never existed; 0.2.0 understates the magnitude.
+	- Implementation: Update `package.json` version to `1.0.0`; add `CHANGELOG.md` entry in Keep a Changelog format with Added/Changed/Removed sections; tag `v1.0.0` in git.
+	- Trade-offs: Declaring 1.0.0 implies stability commitment while some dependencies (MCP alpha, Copilot SDK) are still preview. Mitigation: use 1.1.0 for additive features; reserve 2.0.0 for genuine breaking changes.
+	- Follow-up: 1.1.0 for next additive features without breaking changes; 2.0.0 only for fundamental refactor (e.g., moving away from gRPC proxy pattern).
+- 2025-01-26: Remove Materialise Theme
+	- Owner: Rusty
+	- Status: Implemented
+	- Context: Materialise theme was one of three original themes (alongside Saffron and AuthZed). Theme system auto-discovers themes at build time.
+	- Decision: Remove Materialise theme entirely; keep Saffron (default) and AuthZed.
+	- Implementation: Deleted `themes/materialise/` directory; removed legacy `company: "materialise"` alias from `lib/theme.ts`; simplified `components/Layout.tsx` (removed Materialise-specific branding logic, `isMaterialiseTheme` variable, custom logo sizing); removed stale `.gitignore` line; regenerated theme artifacts.
+	- Files modified: `themes/materialise/` (deleted), `lib/theme.ts`, `components/Layout.tsx`, `.gitignore`; generated files auto-synced.
+	- Verification: Grep confirmed no remaining `materialise` references; generated `lib/generated/themes.ts` correctly reports only 2 themes; theme regeneration successful.
+	- Notes: Historical mentions in `.squad/decisions.md` and `.squad/agents/danny/history.md` left untouched (historical record); all generated theme files are gitignored.
 
 ## Governance
 
