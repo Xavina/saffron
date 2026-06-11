@@ -184,11 +184,11 @@ const SchemaPage: NextPage = () => {
             <div className="space-y-6">
                 <div className="flex justify-between items-center">
                     <div>
-                        <h2 className="inline-flex items-center gap-2 text-2xl font-bold text-gray-900">
-                            <IconCode className="text-orange-300" size={30} aria-hidden />
+                        <h2 className="inline-flex items-center gap-2 text-2xl font-bold text-[var(--saffron-text-primary)]">
+                            <IconCode className="text-[var(--saffron-warning-strong)]" size={30} aria-hidden />
                             Schema
                         </h2>
-                        <p className="text-gray-400">
+                        <p className="text-[var(--saffron-text-muted)]">
                             Develop your schema using the SpiceDB schema language.
                         </p>
                     </div>
@@ -199,13 +199,13 @@ const SchemaPage: NextPage = () => {
                         error={error}
                     />
                 )}
-                <div className="border-b border-gray-200">
+                <div className="border-b border-[var(--saffron-border-subtle)]">
                     <nav className="-mb-px flex space-x-8">
                         <button
                             onClick={() => setActiveTab("editor")}
                             className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "editor"
-                                ? "border-blue-500 text-blue-600"
-                                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                ? "border-[var(--saffron-accent-strong)] text-[var(--saffron-accent-text)]"
+                                : "border-transparent text-[var(--saffron-text-muted)] hover:text-[var(--saffron-text-primary)] hover:border-[var(--saffron-border-default)]"
                                 }`}
                         >
                             Schema Editor
@@ -213,8 +213,8 @@ const SchemaPage: NextPage = () => {
                         <button
                             onClick={() => setActiveTab("visual")}
                             className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "visual"
-                                ? "border-blue-500 text-blue-600"
-                                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                ? "border-[var(--saffron-accent-strong)] text-[var(--saffron-accent-text)]"
+                                : "border-transparent text-[var(--saffron-text-muted)] hover:text-[var(--saffron-text-primary)] hover:border-[var(--saffron-border-default)]"
                                 }`}
                         >
                             Flat View
@@ -222,8 +222,8 @@ const SchemaPage: NextPage = () => {
                         <button
                             onClick={() => setActiveTab("systemVisualization")}
                             className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === "systemVisualization"
-                                ? "border-blue-500 text-blue-600"
-                                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                ? "border-[var(--saffron-accent-strong)] text-[var(--saffron-accent-text)]"
+                                : "border-transparent text-[var(--saffron-text-muted)] hover:text-[var(--saffron-text-primary)] hover:border-[var(--saffron-border-default)]"
                                 }`}
                         >
                             System Visualization
@@ -232,27 +232,27 @@ const SchemaPage: NextPage = () => {
                 </div>
 
                 {success && (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="bg-[var(--saffron-success-soft)] border border-[var(--saffron-success-medium)] rounded-lg p-4">
                         <div className="flex items-center">
-                            <span className="text-green-600 mr-2"><IconCircleCheck /></span>
+                            <span className="text-[var(--saffron-success-strong)] mr-2"><IconCircleCheck /></span>
                             <div>
-                                <h3 className="text-sm font-medium text-green-800">Success</h3>
-                                <p className="text-sm text-green-700">{success}</p>
+                                <h3 className="text-sm font-medium text-[var(--saffron-success-text-soft)]">Success</h3>
+                                <p className="text-sm text-[var(--saffron-success-text)]">{success}</p>
                             </div>
                         </div>
                     </div>
                 )}
 
                 {activeTab === "editor" && (
-                    <div className="bg-gray-800 shadow-xl rounded-lg flex flex-col" style={{ height: 'calc(100vh - 320px)' }}>
+                    <div className="bg-[var(--saffron-surface-panel)] shadow rounded-lg border border-[var(--saffron-border-default)] flex flex-col" style={{ height: 'calc(100vh - 320px)' }}>
                         <div className="px-4 py-5 sm:p-6 flex flex-col h-full">
                             <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-lg leading-6 font-medium text-white">Schema Definition</h3>
+                                <h3 className="text-lg leading-6 font-medium text-[var(--saffron-text-primary)]">Schema Definition</h3>
                                 <div className="flex space-x-3">
                                     <button
                                         onClick={loadSchema}
                                         disabled={isLoading}
-                                        className="inline-flex items-center justify-center px-3 py-2 border border-gray-600 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-600 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                                        className="theme-secondary-button inline-flex items-center justify-center px-3 py-2 shadow-sm text-sm leading-4 font-medium rounded-md focus:outline-none disabled:opacity-50"
                                         style={{ minWidth: '110px' }}
                                     >
                                         <IconReload className={`mr-2 ${isLoading ? 'animate-spin' : ''}`} />
@@ -261,7 +261,7 @@ const SchemaPage: NextPage = () => {
                                     <button
                                         onClick={saveSchema}
                                         disabled={isLoading}
-                                        className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                                        className="theme-primary-button inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md shadow-sm focus:outline-none disabled:opacity-50"
                                         style={{ minWidth: '145px' }}
                                     ><IconDeviceFloppy className="mr-2" />
                                         {isLoading ? "Saving..." : "Save Schema"}
@@ -269,7 +269,7 @@ const SchemaPage: NextPage = () => {
                                 </div>
                             </div>
 
-                            <div className="flex-1 relative rounded-md overflow-hidden border border-gray-700" style={{ minHeight: 0 }}>
+                            <div className="flex-1 relative rounded-md overflow-hidden border border-[var(--saffron-border-default)]" style={{ minHeight: 0 }}>
                                 <CodeMirror
                                     value={schema}
                                     height="calc(100vh - 420px)"
@@ -288,12 +288,12 @@ const SchemaPage: NextPage = () => {
                                 />
                             </div>
 
-                            <div className="text-sm text-gray-400 mt-3">
+                            <div className="text-sm text-[var(--saffron-text-secondary)] mt-3">
                                 <p className="text-xs inline-flex items-center gap-2">
-                                    <IconBulb className="text-yellow-500" /><strong>Tip:</strong> Use the SpiceDB schema language to define your authorization model. Start with{" "}
-                                    <code className="bg-gray-700 px-1 py-0.5 rounded text-blue-400">definition</code> blocks and define{" "}
-                                    <code className="bg-gray-700 px-1 py-0.5 rounded text-green-400">relation</code> and{" "}
-                                    <code className="bg-gray-700 px-1 py-0.5 rounded text-yellow-400">permission</code> statements.
+                                    <IconBulb className="text-[var(--saffron-warning-strong)]" /><strong>Tip:</strong> Use the SpiceDB schema language to define your authorization model. Start with{" "}
+                                    <code className="bg-[var(--saffron-surface-raised)] px-1 py-0.5 rounded text-[var(--saffron-accent-text)]">definition</code> blocks and define{" "}
+                                    <code className="bg-[var(--saffron-surface-raised)] px-1 py-0.5 rounded text-[var(--saffron-success-text)]">relation</code> and{" "}
+                                    <code className="bg-[var(--saffron-surface-raised)] px-1 py-0.5 rounded text-[var(--saffron-warning-text-soft)]">permission</code> statements.
                                 </p>
                             </div>
                         </div>
@@ -303,56 +303,75 @@ const SchemaPage: NextPage = () => {
                 {activeTab === "visual" && (
                     <div className="space-y-6">
                         {namespaces.map((ns) => (
-                            <div key={ns.name} className="bg-white shadow rounded-lg">
+                            <div
+                                key={ns.name}
+                                className="bg-[var(--saffron-surface-panel)] shadow rounded-lg border border-[var(--saffron-border-default)]"
+                            >
                                 <div className="px-4 py-5 sm:p-6">
-                                    <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-                                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm font-medium mr-2">{ns.name}</span>
+                                    <h3 className="text-lg leading-6 font-medium text-[var(--saffron-text-primary)] mb-4">
+                                        <span className="inline-flex items-center bg-[var(--saffron-accent-soft)] text-[var(--saffron-accent-text)] px-2 py-1 rounded text-sm font-medium mr-2">
+                                            {ns.name}
+                                        </span>
                                         Definition
                                     </h3>
 
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                         <div>
-                                            <h4 className="text-md font-medium text-gray-700 mb-3">Relations</h4>
+                                            <h4 className="text-md font-medium text-[var(--saffron-text-secondary)] mb-3">Relations</h4>
                                             {ns.relations.length ? (
                                                 <div className="space-y-2">
                                                     {ns.relations.map((r, idx) => (
-                                                        <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                                        <div
+                                                            key={idx}
+                                                            className="flex items-center justify-between p-3 rounded-lg border border-[var(--saffron-border-subtle)] bg-[var(--saffron-surface-raised)]"
+                                                        >
                                                             <div>
-                                                                <span className="font-medium text-gray-900">{r.name}</span>
-                                                                <span className="text-gray-200 ml-2">: {r.type}</span>
+                                                                <span className="font-medium text-[var(--saffron-text-primary)]">{r.name}</span>
+                                                                <span className="text-[var(--saffron-text-secondary)] ml-2">: {r.type}</span>
                                                             </div>
-                                                            <span className="text-xs bg-gray-200 text-gray-200 px-2 py-1 rounded">relation</span>
+                                                            <span className="text-xs bg-[var(--saffron-accent-soft)] text-[var(--saffron-accent-text)] px-2 py-1 rounded">
+                                                                relation
+                                                            </span>
                                                         </div>
                                                     ))}
                                                 </div>
                                             ) : (
-                                                <p className="text-gray-500 italic">No relations defined</p>
+                                                <p className="text-[var(--saffron-text-muted)] italic">No relations defined</p>
                                             )}
                                         </div>
 
                                         <div>
-                                            <h4 className="text-md font-medium text-gray-700 mb-3">Permissions</h4>
+                                            <h4 className="text-md font-medium text-[var(--saffron-text-secondary)] mb-3">Permissions</h4>
                                             {ns.permissions.length ? (
                                                 <div className="space-y-2">
                                                     {ns.permissions.map((p, idx) => (
-                                                        <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                                        <div
+                                                            key={idx}
+                                                            className="flex items-center justify-between p-3 rounded-lg border border-[var(--saffron-border-subtle)] bg-[var(--saffron-surface-raised)]"
+                                                        >
                                                             <div>
-                                                                <span className="font-medium text-gray-900">{p.name}</span>
-                                                                <span className="text-gray-200 ml-2">= {p.expression}</span>
+                                                                <span className="font-medium text-[var(--saffron-text-primary)]">{p.name}</span>
+                                                                <span className="text-[var(--saffron-text-secondary)] ml-2">= {p.expression}</span>
                                                             </div>
-                                                            <span className="text-xs bg-gray-200 text-gray-200 px-2 py-1 rounded">permission</span>
+                                                            <span className="text-xs bg-[var(--saffron-accent-soft)] text-[var(--saffron-accent-text)] px-2 py-1 rounded">
+                                                                permission
+                                                            </span>
                                                         </div>
                                                     ))}
                                                 </div>
                                             ) : (
-                                                <p className="text-gray-500 italic">No permissions defined</p>
+                                                <p className="text-[var(--saffron-text-muted)] italic">No permissions defined</p>
                                             )}
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         ))}
-                        {!namespaces.length && <p className="text-gray-500">No namespaces parsed yet.</p>}
+                        {!namespaces.length && (
+                            <div className="bg-[var(--saffron-surface-panel)] shadow rounded-lg border border-[var(--saffron-border-default)] p-4">
+                                <p className="text-[var(--saffron-text-muted)]">No namespaces parsed yet.</p>
+                            </div>
+                        )}
                     </div>
                 )}
 

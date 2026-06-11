@@ -1,7 +1,6 @@
 
 # The SpiceDB UI
 
-
 A modern web interface for managing SpiceDB authorization systems. Built with Next.js and Tailwind CSS.
 
 **This codebase was forked from [Saffron](https://github.com/dreaminhex/saffron) and enhaced with new features.**
@@ -14,477 +13,72 @@ A modern web interface for managing SpiceDB authorization systems. Built with Ne
 1. **Schema Graph Visualization** - Interactive System Visualization tab with draggable entity layout and relation tooltips
 1. **Relationship Management** - CRUD operations with smart dropdowns and search
 1. **Authorization Testing** - Permission checks, expansions, subject lookups, and check evaluations shown as a Decision Tree
+1. **AI Assistant** - Ask questions about your SpiceDB schema and authorization model (powered by GitHub Copilot SDK, opt-in via `ENABLE_ASSISTANT` flag)
 1. **Zed Terminal** - Run `zed` commands against the connected SpiceDB instance
-
-
-## Table of Contents
-
-1. [Features](#features)
-2. [Prerequisites](#prerequisites)
-3. [Quick Start](#quick-start)
-4. [Configuration](#configuration)
-5. [UI Themes](#ui-themes)
-6. [Mock Data](#mock-data)
-7. [Usage](#usage)
-8. [API Endpoints](#api-endpoints)
-9. [Tech Stack](#tech-stack)
-10. [Troubleshooting](#troubleshooting)
-11. [Development](#development)
-12. [License](#license)
-13. [Links](#links)
-
-## Prerequisites
-
-- Node.js 18+
-- Docker & Docker Compose (for containerized setup)
 
 ## Quick Start
 
-### Option 1: Docker Compose (Recommended)
+### Docker Compose (Recommended)
 
-The easiest way to get started with both SpiceDB and Saffron:
+The easiest way to get started. Follow these steps:
 
-1. **Clone and install**
-
-   ```bash
-   git clone https://github.com/dreaminhex/saffron.git
-   cd saffron
-   npm install
-   ```
-
-2. **Start everything with Docker Compose**
-
-   ```bash
-   docker-compose up -d
-   ```
-
-   This starts:
-   - PostgreSQL (SpiceDB's datastore)
-   - SpiceDB (authorization service)
-   - Saffron UI
-
-3. **Run database migrations (first time only)**
-
-   ```bash
-   docker-compose exec spicedb spicedb datastore migrate head --datastore-engine postgres --datastore-conn-uri "postgres://spicedb:spicedb@postgres:5432/spicedb?sslmode=disable"
-   ```
-
-4. **Initialize with mock data**
-
-   **Windows (PowerShell):**
-   ```powershell
-   .\init-spicedb.ps1
-   ```
-
-   **Linux/Mac/WSL:**
-   ```bash
-   chmod +x init-spicedb.sh
-   ./init-spicedb.sh
-   ```
-
-5. **Access the application**
-
-   Open [http://localhost:7777](http://localhost:7777)
-
-### Option 2: Local Development
-
-For development, run SpiceDB in Docker but Saffron locally:
-
-1. **Clone and install**
-
-   ```bash
-   git clone https://github.com/dreaminhex/saffron.git
-   cd saffron
-   npm install
-   ```
-
-2. **Start only SpiceDB services**
-
-   ```bash
-   docker-compose up -d postgres spicedb
-   ```
-
-3. **Run database migrations (first time only)**
-
-   ```bash
-   docker-compose exec spicedb spicedb datastore migrate head --datastore-engine postgres --datastore-conn-uri "postgres://spicedb:spicedb@postgres:5432/spicedb?sslmode=disable"
-   ```
-
-4. **Initialize SpiceDB with mock data**
-
-   **Windows (PowerShell):**
-   ```powershell
-   .\init-spicedb.ps1
-   ```
-
-   **Linux/Mac/WSL:**
-   ```bash
-   chmod +x init-spicedb.sh
-   ./init-spicedb.sh
-   ```
-
-5. **Run Saffron locally**
-
-   ```bash
-   npm run dev
-   ```
-
-
-   The `.env.local` file is already configured to connect to the correct SpiceDB HTTP and gRPC endpoints. If you change ports or run SpiceDB elsewhere, update this file accordingly.
-
-   Open [http://localhost:7777](http://localhost:7777)
-
-### Option 3: Manual SpiceDB Setup
-
-If you want to run SpiceDB without Docker Compose (requires manual PostgreSQL setup):
-
-1. **Start PostgreSQL**
-
-   ```bash
-   docker run -d --name spicedb-postgres \
-     -e POSTGRES_USER=spicedb \
-     -e POSTGRES_PASSWORD=spicedb \
-     -e POSTGRES_DB=spicedb \
-     -p 5432:5432 \
-     postgres:15-alpine
-   ```
-
-2. **Start SpiceDB with gRPC API**
-
-   ```bash
-    docker run -d --name spicedb \
-       -p 50051:50051 \
-     -e SPICEDB_GRPC_PRESHARED_KEY="saffron-dev-key" \
-     -e SPICEDB_DATASTORE_ENGINE=postgres \
-     -e SPICEDB_DATASTORE_CONN_URI="postgres://spicedb:spicedb@host.docker.internal:5432/spicedb?sslmode=disable" \
-       authzed/spicedb serve
-   ```
-
-3. **Run database migrations**
-
-   ```bash
-   docker exec spicedb spicedb datastore migrate head \
-     --datastore-engine postgres \
-     --datastore-conn-uri "postgres://spicedb:spicedb@host.docker.internal:5432/spicedb?sslmode=disable"
-   ```
-
-4. **Initialize with mock data**
-
-   ```bash
-   chmod +x init-spicedb.sh
-   ./init-spicedb.sh
-   ```
-
-5. **Configure environment**
-
-   Create `.env.local`:
-   ```bash
-   # gRPC API (used by all Saffron backend routes)
-   SPICEDB_ENDPOINT=localhost:50051
-   SPICEDB_PRESHARED_KEY=saffron-dev-key
-   SPICEDB_INSECURE=true
-   ```
-
-6. **Start the UI**
-
-   ```bash
-   npm run dev
-   ```
-
-   Open [http://localhost:7777](http://localhost:7777)
-
-## Configuration
-
-
-### Environment Variables
-
-Create a `.env.local` file in the root directory (see above for details). The default values are:
+**1. Clone and install**
 
 ```bash
-SPICEDB_ENDPOINT=localhost:50051
-SPICEDB_PRESHARED_KEY=saffron-dev-key
-SPICEDB_INSECURE=true
+git clone https://github.com/dreaminhex/saffron.git
+cd saffron
+npm install
 ```
 
-> **Note:** If you do not set these, the backend will fall back to defaults (`localhost:50051` and `somerandomkeyhere`). Always use `.env.local` for local development.
+**2. Enable full stack in docker-compose.yml**
 
-### Assistant Configuration
+The default `docker-compose.yml` runs only the Saffron UI. To run the full stack:
+- Open `docker-compose.yml`
+- Uncomment the `postgres` and `spicedb` service definitions
+- Uncomment the `depends_on` section in the `saffron` service
 
-The Assistant page uses the GitHub Copilot SDK on the backend and calls the same SpiceDB server-side tools as the rest of the app.
-
-Enable the feature for both the UI and the API routes with a single public flag:
+**3. Start the services**
 
 ```bash
-NEXT_PUBLIC_ENABLE_ASSISTANT=true
-```
-
-This app intentionally uses only `NEXT_PUBLIC_ENABLE_ASSISTANT` so the browser and server read the same value.
-
-If the flag is unset or set to `false`, the Assistant navigation entry stays hidden and the Assistant page and API routes remain unavailable.
-
-Set Copilot authentication with one of these environment variables:
-
-```bash
-COPILOT_GITHUB_TOKEN=...
-# or
-GITHUB_TOKEN=...
-# or
-GH_TOKEN=...
-```
-
-Optionally pin a model with `COPILOT_MODEL` or `GITHUB_COPILOT_MODEL`. If neither is set, the assistant uses the host default Copilot model.
-
-For local SpiceDB development, `.env.local` should look like:
-
-```bash
-SPICEDB_ENDPOINT=localhost:50051
-SPICEDB_PRESHARED_KEY=test-key
-SPICEDB_INSECURE=true
-```
-
-For a hosted SpiceDB instance, use the hosted gRPC endpoint and disable insecure mode:
-
-```bash
-SPICEDB_ENDPOINT=https://spicedb.grpc.cloud:443
-SPICEDB_PRESHARED_KEY=xxxxxxxx
-SPICEDB_INSECURE=false
-```
-
-### UI Themes
-
-The UI now uses theme tokens. The active theme is set on the root element with:
-
-```html
-<html data-theme="saffron|materialise" data-color-mode="light|dark">
-```
-
-Theme values live in `styles/globals.css` under:
-
-- `:root[data-theme="saffron"][data-color-mode="light"]`
-- `:root[data-theme="saffron"][data-color-mode="dark"]`
-- `:root[data-theme="materialise"][data-color-mode="light"]`
-- `:root[data-theme="materialise"][data-color-mode="dark"]`
-
-Preview `materialise` instantly in browser with `?theme=materialise` (for example: `http://localhost:7777/dashboard?theme=materialise`).  
-The selected theme persists in localStorage under `saffron.ui.theme`.
-
-### Docker Compose Services
-
-The `docker-compose.yml` defines three services:
-
-- **postgres** - PostgreSQL database (SpiceDB's datastore) on internal network
-- **spicedb** - Authorization service
-  - gRPC API: `localhost:50051`
-- **saffron** - Next.js UI application on `localhost:7777`
-
-All services share a `saffron-network` for internal communication.
-
-### Mock Data
-
-The initialization scripts (`init-spicedb.sh` / `init-spicedb.ps1`) load a sample organizational structure:
-
-**Users:**
-- `ceo`, `cto`, `an_eng_director`, `an_eng_manager`, `an_engineer`
-- `it_admin`, `an_external_user`, `a_villain`
-
-**Groups (nested hierarchy):**
-- `csuite` → `engineering` → `applications` → `productname`
-
-**Resources:**
-- `promserver` - Managed by productname team, viewed by engineering
-- `jira` - Managed by engineering managers, viewed by all engineering
-
-**Organization:**
-- `org1` - Contains all groups and resources
-
-## Usage
-
-### Assistant
-
-Open the **Assistant** page after setting the Copilot token and SpiceDB connection in `.env.local`.
-
-Verify the backend is ready before using the UI:
-
-```bash
-curl http://localhost:7777/api/spicedb/assistant-status
-curl -X POST http://localhost:7777/api/spicedb/chat \
-   -H 'Content-Type: application/json' \
-   -d '{"message":"Explain the schema in one short paragraph."}'
-curl -N -X POST http://localhost:7777/api/spicedb/chat-stream \
-   -H 'Content-Type: application/json' \
-   -d '{"message":"Explain the schema in one short paragraph."}'
-```
-
-These endpoints should return a healthy assistant status, a normal JSON response, and a streaming response respectively.
-
-### 1. Schema Management
-
-- Navigate to the **Schema** page
-- A default schema has already been loaded - you can edit this from `./examples/spicedb/data/schema.yml`
-- Edit your authorization model using SpiceDB schema language
-- Use the **Flat View** tab to see parsed namespaces, relations, and permissions
-- Use the **System Visualization** tab to view your schema as a graph of entities and relations
-- Drag entities in the graph to organize the layout; positions are remembered when you return
-- Relation labels are shown inline with an overflow tooltip for additional relations
-- Save changes directly to SpiceDB
-
-### 2. Relationship Management
-
-- Go to the **Relationships** page
-- Add relationships using smart dropdowns:
-  - **Resource**: Search existing or create new (e.g., `business:acme-corp`)
-  - **Relation**: Auto-populated from your schema (e.g., `owner`, `manager`)
-  - **Subject**: Manual entry (e.g., `user:alice`)
-- View, search, and filter existing relationships
-
-### 3. Authorization Testing
-
-Use the **Check** page for permission testing with the following features:
-- **Permission Check**: Test if a subject has permission on a resource
-- **Expand Permission**: Visualize permission trees
-- **Lookup Subjects**: Find all subjects with a specific permission
-
-#### Example Permission Checks (using mock data):
-
-**✅ Should ALLOW:**
-
-1. **CEO can admin org1**
-   - Resource: `organization:org1`
-   - Permission: `admin`
-   - Subject: `user:ceo`
-
-2. **Engineer can view promserver**
-   - Resource: `resource:promserver`
-   - Permission: `view`
-   - Subject: `user:an_engineer`
-
-3. **CTO can manage jira**
-   - Resource: `resource:jira`
-   - Permission: `manage`
-   - Subject: `user:cto`
-
-4. **External user can view promserver**
-   - Resource: `resource:promserver`
-   - Permission: `view`
-   - Subject: `user:an_external_user`
-
-**❌ Should DENY:**
-
-1. **External user cannot manage promserver**
-   - Resource: `resource:promserver`
-   - Permission: `manage`
-   - Subject: `user:an_external_user`
-
-2. **Villain cannot access jira**
-   - Resource: `resource:jira`
-   - Permission: `view`
-   - Subject: `user:a_villain`
-
-3. **Engineer cannot manage jira** (only view)
-   - Resource: `resource:jira`
-   - Permission: `manage`
-   - Subject: `user:an_engineer`
-
-### 4. Terminal Usage
-
-- Use the **Terminal** page for executing `zed` queries against the database
-
-## API Endpoints
-
-The UI creates several API routes:
-
-- `GET /api/spicedb/stats` - Dashboard statistics
-- `GET /api/spicedb/health` - Connection health check
-- `GET /api/spicedb/resources` - Available resources and relations
-- `GET|POST /api/spicedb/schema` - Schema management
-- `GET|POST|DELETE /api/spicedb/relationships` - Relationship CRUD
-- `POST /api/spicedb/check` - Permission checking
-- `POST /api/spicedb/expand` - Permission expansion
-- `POST /api/spicedb/lookup-subjects` - Subject lookup
-
-## Tech Stack
-
-- **Frontend**: Next.js 13+, React, Tailwind CSS
-- **Backend**: Next.js API routes
-- **Database**: SpiceDB (via gRPC API)
-- **Styling**: Tailwind CSS with custom components
-- **Icons**: Tabler
-
-## Troubleshooting
-
-### SpiceDB not responding
-
-If the initialization script hangs or SpiceDB isn't responding:
-
-1. Check if SpiceDB migrations have been run:
-   ```bash
-   docker-compose logs spicedb | grep -i migrate
-   ```
-
-2. If you see "datastore is not migrated" errors, run migrations:
-   ```bash
-   docker-compose exec spicedb spicedb datastore migrate head --datastore-engine postgres --datastore-conn-uri "postgres://spicedb:spicedb@postgres:5432/spicedb?sslmode=disable"
-   ```
-
-3. Restart SpiceDB after migration:
-   ```bash
-   docker-compose restart spicedb
-   ```
-
-### Fresh start
-
-To completely reset everything:
-```bash
-docker-compose down -v
 docker-compose up -d
-# Run migrations again
+```
+
+This starts PostgreSQL, SpiceDB, and the Saffron UI containers.
+
+**4. Run database migrations** (first time only)
+
+```bash
 docker-compose exec spicedb spicedb datastore migrate head --datastore-engine postgres --datastore-conn-uri "postgres://spicedb:spicedb@postgres:5432/spicedb?sslmode=disable"
-# Initialize data
-./init-spicedb.sh
 ```
 
-## Development
+**5. Initialize with mock data**
 
-### Local Development Commands
+**Windows (PowerShell):**
+
+```powershell
+.\init-spicedb.ps1
+```
+
+**Linux/Mac/WSL:**
 
 ```bash
-npm run dev      # Start development server
-npm run build    # Build for production
-npm start        # Start production server
+chmod +x init-spicedb.sh && ./init-spicedb.sh
 ```
 
-### Docker Commands
+**6. Open the app**
 
-```bash
-# Start all services (Saffron, SpiceDB, PostgreSQL)
-docker-compose up -d
+Open [http://localhost:7777](http://localhost:7777) in your browser.
 
-# Start only SpiceDB services (for local Saffron development)
-docker-compose up -d postgres spicedb
+For other installation options (Local Development, Manual SpiceDB), see [Installation Guide](doc/installation.md).
 
-# View logs
-docker-compose logs -f saffron
-docker-compose logs -f spicedb
+## Documentation
 
-# Stop services
-docker-compose down
-
-# Stop and remove volumes (fresh start)
-docker-compose down -v
-
-# Rebuild Saffron container
-docker-compose up -d --build saffron
-```
-
-### Connecting to Services
-
-**When Saffron runs locally:**
-- SpiceDB gRPC: `localhost:50051`
-- SpiceDB HTTP: `http://localhost:8443`
-
-**When Saffron runs in Docker:**
-- SpiceDB gRPC: `spicedb:50051` (internal network)
-- SpiceDB HTTP: `http://spicedb:8443` (internal network)
+- **[Installation Guide](doc/installation.md)** - Detailed setup instructions for Docker Compose, local development, and manual SpiceDB configuration
+- **[Configuration Guide](doc/configuration.md)** - Environment variables, Assistant setup, UI themes, Docker services, and mock data
+- **[Usage Guide](doc/usage.md)** - How to use the UI: Schema Management, Relationships, Authorization Testing, Assistant, and Terminal
+- **[API Endpoints](doc/api.md)** - Reference for all backend API routes
+- **[Development Guide](doc/development.md)** - Tech stack, development commands, Docker commands, and service connection details
+- **[Troubleshooting Guide](doc/troubleshooting.md)** - Common issues and solutions
 
 ## License
 
