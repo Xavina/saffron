@@ -19,18 +19,47 @@ A modern web interface for managing SpiceDB authorization systems. Built with Ne
 
 ### Docker Compose (Recommended)
 
-The easiest way to get started:
+The easiest way to get started. Follow these steps:
+
+**1. Clone and install**
 
 ```bash
 git clone https://github.com/dreaminhex/saffron.git
 cd saffron
 npm install
-docker-compose up -d
-docker-compose exec spicedb spicedb datastore migrate head --datastore-engine postgres --datastore-conn-uri "postgres://spicedb:spicedb@postgres:5432/spicedb?sslmode=disable"
-# On Windows: .\init-spicedb.ps1 | On Linux/Mac: chmod +x init-spicedb.sh && ./init-spicedb.sh
 ```
 
-Open [http://localhost:7777](http://localhost:7777)
+**2. Start the services**
+
+```bash
+docker-compose up -d
+```
+
+This starts PostgreSQL, SpiceDB, and the Saffron UI containers.
+
+**3. Run database migrations** (first time only)
+
+```bash
+docker-compose exec spicedb spicedb datastore migrate head --datastore-engine postgres --datastore-conn-uri "postgres://spicedb:spicedb@postgres:5432/spicedb?sslmode=disable"
+```
+
+**4. Initialize with mock data**
+
+**Windows (PowerShell):**
+
+```powershell
+.\init-spicedb.ps1
+```
+
+**Linux/Mac/WSL:**
+
+```bash
+chmod +x init-spicedb.sh && ./init-spicedb.sh
+```
+
+**5. Open the app**
+
+Open [http://localhost:7777](http://localhost:7777) in your browser.
 
 For other installation options (Local Development, Manual SpiceDB), see [Installation Guide](doc/installation.md).
 
