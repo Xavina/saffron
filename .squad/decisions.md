@@ -31,6 +31,12 @@
 	- Context: Permissions page needed integration with live SpiceDB checks instead of mocked responses.
 	- Approach: Reused Check page's `permissionship` normalization rules so numeric and string enum responses render consistently across both pages.
 	- Preservation: Kept existing Permissions page structure and local history UX intact by adapting API responses into the page's existing result/history shape.
+- 2026-06-11: Move Bulk Check from Permissions page to Check page.
+	- Owner: Rusty
+	- Context: Bulk checking is conceptually closer to other check operations (Permission Check, Expand Permission, Lookup Subjects) than to the permissions overview.
+	- Implementation: Ported BulkCheckForm type, bulkCheckForm state, and performBulkCheck handler to Check page; added "Bulk Check" tab positioned immediately after "Permission Check" tab; simplified Permissions page to single-check-only workflow.
+	- Validation: Build completed with zero TypeScript errors; no linting issues.
+	- Trade-offs: Permissions page now has only one function; Check page navigation expanded from 3 to 4 tabs.
 
 ## Governance
 
