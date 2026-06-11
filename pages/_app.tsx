@@ -16,7 +16,6 @@ const PAGE_TITLE_BY_ROUTE: Record<string, string> = {
     "/dashboard": "Dashboard",
     "/schema": "Schema",
     "/relationships": "Relationships",
-    "/permissions": "Permissions",
     "/check": "Check",
     "/terminal": "Terminal",
     "/assistant": "Assistant",

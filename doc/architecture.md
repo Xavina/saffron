@@ -24,7 +24,6 @@ The app uses file-based routes under `pages/` for primary domains:
 - `dashboard.tsx`
 - `schema.tsx`
 - `relationships.tsx`
-- `permissions.tsx`
 - `check.tsx`
 - `terminal.tsx`
 - `assistant.tsx` (feature-flag gated)
@@ -40,7 +39,7 @@ The app uses file-based routes under `pages/` for primary domains:
 ### 3.3 UX behavior
 
 - Route changes show a global loading bar/pill and progress cursor.
-- Permissions UI uses real API-backed checks (`/api/spicedb/check`) with trace rendering, replacing prior mocked behavior.
+- Authorization testing UI uses real API-backed checks (`/api/spicedb/check`) with trace rendering. Single-check and bulk-check flows both live on the Check page.
 
 ## 4. Backend/API Architecture
 

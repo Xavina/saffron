@@ -5,7 +5,6 @@ import {
     IconLayoutDashboard,
     IconCode,
     IconLink,
-    IconShieldCheck,
     IconCircleCheck,
     IconMessageCircle,
     IconLayoutSidebarLeftCollapse,
@@ -63,7 +62,6 @@ const Layout: React.FC<LayoutProps> = ({ children, enableAssistant }) => {
         { name: "Dashboard", href: "/dashboard", icon: IconLayoutDashboard },
         { name: "Schema", href: "/schema", icon: IconCode },
         { name: "Relationships", href: "/relationships", icon: IconLink },
-        { name: "Permissions", href: "/permissions", icon: IconShieldCheck },
         { name: "Check", href: "/check", icon: IconCircleCheck },
         { name: "Terminal", href: "/terminal", icon: IconTerminal2 },
     ];

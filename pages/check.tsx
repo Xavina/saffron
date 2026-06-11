@@ -6,6 +6,7 @@ import { IconAlertHexagon, IconChevronDown, IconChevronRight, IconCircleCheck, I
 import PermissionDecisionTree, { type PermissionDebugTrace } from "@/components/PermissionDecisionTree";
 
 type CheckForm = { resource: string; permission: string; subject: string; context: string };
+type BulkCheckForm = { resource: string; permission: string; subjects: string };
 type ExpandForm = { resource: string; permission: string; context: string };
 type LookupForm = { resource: string; permission: string; subjectType: string; context: string };
 type LookupSubject = {
@@ -13,6 +14,19 @@ type LookupSubject = {
     objectId?: string;
     object?: { objectType?: string; objectId?: string };
     optionalRelation?: string;
+};
+
+type SingleResult = {
+    id: string;
+    resource: { type: string; id: string };
+    permission: string;
+    subject: { type: string; id: string };
+    result: "ALLOWED" | "DENIED" | "CONDITIONAL" | "UNKNOWN";
+    timestamp: string;
+    duration: string;
+    debugTrace?: {
+        check?: PermissionDebugTrace;
+    };
 };
 
 type CheckResult =
@@ -25,6 +39,10 @@ type CheckResult =
         debugTrace?: {
             check?: PermissionDebugTrace;
         };
+    }
+    | {
+        type: "bulk";
+        results: SingleResult[];
     }
     | {
         type: "expand";
@@ -47,6 +65,7 @@ type ExpandNode = {
 
 const CheckPage: NextPage = () => {
     const [checkForm, setCheckForm] = useState<CheckForm>({ resource: "", permission: "", subject: "", context: "" });
+    const [bulkCheckForm, setBulkCheckForm] = useState<BulkCheckForm>({ resource: "", permission: "", subjects: "" });
     const [expandForm, setExpandForm] = useState<ExpandForm>({ resource: "", permission: "", context: "" });
     const [lookupForm, setLookupForm] = useState<LookupForm>({
         resource: "",
@@ -54,11 +73,89 @@ const CheckPage: NextPage = () => {
         subjectType: "",
         context: "",
     });
-    const [activeTab, setActiveTab] = useState<"check" | "expand" | "lookup">("check");
+    const [activeTab, setActiveTab] = useState<"check" | "bulk" | "expand" | "lookup">("check");
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [result, setResult] = useState<CheckResult | null>(null);
     const [isCheckTraceExpanded, setIsCheckTraceExpanded] = useState(false);
+    const [expandedTraceIds, setExpandedTraceIds] = useState<Record<string, boolean>>({});
     const [error, setError] = useState<string>("");
+
+    const normalizePermissionship = (permissionship?: string | number) => {
+        switch (permissionship) {
+            case 2:
+            case "2":
+            case "HAS_PERMISSION":
+            case "PERMISSIONSHIP_HAS_PERMISSION":
+                return "HAS_PERMISSION";
+            case 1:
+            case "1":
+            case "NO_PERMISSION":
+            case "PERMISSIONSHIP_NO_PERMISSION":
+                return "NO_PERMISSION";
+            case 3:
+            case "3":
+            case "CONDITIONAL_PERMISSION":
+            case "PERMISSIONSHIP_CONDITIONAL_PERMISSION":
+                return "CONDITIONAL_PERMISSION";
+            default:
+                return "UNKNOWN";
+        }
+    };
+
+    const mapPermissionshipToResult = (permissionship?: string | number): "ALLOWED" | "DENIED" | "CONDITIONAL" | "UNKNOWN" => {
+        switch (normalizePermissionship(permissionship)) {
+            case "HAS_PERMISSION":
+                return "ALLOWED";
+            case "NO_PERMISSION":
+                return "DENIED";
+            case "CONDITIONAL_PERMISSION":
+                return "CONDITIONAL";
+            default:
+                return "UNKNOWN";
+        }
+    };
+
+    const checkPermission = async (resourceValue: string, permission: string, subjectValue: string): Promise<SingleResult> => {
+        const [resourceType, resourceId] = resourceValue.split(":");
+        const [subjectType, subjectId] = subjectValue.split(":");
+
+        if (!resourceType || !resourceId || !subjectType || !subjectId) {
+            throw new Error("Invalid format. Use type:id format");
+        }
+
+        const startedAt = performance.now();
+        const response = await fetch("/api/spicedb/check", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                resource: { object_type: resourceType, object_id: resourceId },
+                permission,
+                subject: { object: { object_type: subjectType, object_id: subjectId } },
+                withTracing: true,
+            }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || "Check request failed");
+        }
+
+        return {
+            id: `${Date.now()}-${subjectType}-${subjectId}`,
+            resource: { type: resourceType, id: resourceId },
+            permission,
+            subject: { type: subjectType, id: subjectId },
+            result: mapPermissionshipToResult(data.permissionship),
+            timestamp: typeof data.checked_at === "string"
+                ? data.checked_at
+                : typeof data.checkedAt === "string"
+                    ? data.checkedAt
+                    : new Date().toISOString(),
+            duration: `${Math.max(1, Math.round(performance.now() - startedAt))}ms`,
+            debugTrace: data.debugTrace || data.debug_trace,
+        };
+    };
 
     const performCheck = async () => {
         if (!checkForm.resource || !checkForm.permission || !checkForm.subject) {
@@ -113,6 +210,30 @@ const CheckPage: NextPage = () => {
             });
         } catch (err: any) {
             setError(err.message || "Failed to perform permission check");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const performBulkCheck = async () => {
+        if (!bulkCheckForm.resource || !bulkCheckForm.permission || !bulkCheckForm.subjects) {
+            setError("All fields are required");
+            return;
+        }
+
+        setIsLoading(true);
+        setError("");
+        setResult(null);
+
+        try {
+            const subjects = bulkCheckForm.subjects.split("\n").map((s) => s.trim()).filter(Boolean);
+            const bulkResults = await Promise.all(
+                subjects.map((subject) => checkPermission(bulkCheckForm.resource, bulkCheckForm.permission, subject))
+            );
+
+            setResult({ type: "bulk", results: bulkResults });
+        } catch (err: any) {
+            setError(err.message || "Failed to perform bulk permission check");
         } finally {
             setIsLoading(false);
         }
@@ -258,25 +379,40 @@ const CheckPage: NextPage = () => {
         return `${objectType ?? "?"}:${objectId ?? "?"}${optionalRelation}`;
     };
 
-    const normalizePermissionship = (permissionship?: string | number) => {
-        switch (permissionship) {
-            case 2:
-            case "2":
-            case "HAS_PERMISSION":
-            case "PERMISSIONSHIP_HAS_PERMISSION":
-                return "HAS_PERMISSION";
-            case 1:
-            case "1":
-            case "NO_PERMISSION":
-            case "PERMISSIONSHIP_NO_PERMISSION":
-                return "NO_PERMISSION";
-            case 3:
-            case "3":
-            case "CONDITIONAL_PERMISSION":
-            case "PERMISSIONSHIP_CONDITIONAL_PERMISSION":
-                return "CONDITIONAL_PERMISSION";
+    const toggleTrace = (id: string) => {
+        setExpandedTraceIds((current) => ({
+            ...current,
+            [id]: !current[id],
+        }));
+    };
+
+    const hasTrace = (item: SingleResult) => Boolean(item.debugTrace?.check);
+
+    const isTraceExpanded = (id: string) => Boolean(expandedTraceIds[id]);
+
+    const getResultColor = (r: SingleResult["result"]) => {
+        switch (r) {
+            case "ALLOWED":
+                return "bg-green-100 text-green-800";
+            case "DENIED":
+                return "bg-red-100 text-red-800";
+            case "CONDITIONAL":
+                return "bg-yellow-100 text-yellow-800";
             default:
-                return "UNKNOWN";
+                return "bg-gray-100 text-gray-800";
+        }
+    };
+
+    const getResultIcon = (r: SingleResult["result"]) => {
+        switch (r) {
+            case "ALLOWED":
+                return <IconCircleCheck />;
+            case "DENIED":
+                return <IconExclamationCircle />;
+            case "CONDITIONAL":
+                return <IconAlertHexagon />;
+            default:
+                return <IconHelpHexagon />;
         }
     };
 
@@ -369,7 +505,7 @@ const CheckPage: NextPage = () => {
 
             <div className="border-b border-gray-200">
                 <nav className="-mb-px flex space-x-8">
-                    {(["check", "expand", "lookup"] as const).map((tab) => (
+                    {(["check", "bulk", "expand", "lookup"] as const).map((tab) => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
@@ -378,7 +514,7 @@ const CheckPage: NextPage = () => {
                                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                                 }`}
                         >
-                            {tab === "check" ? "Permission Check" : tab === "expand" ? "Expand Permission" : "Lookup Subjects"}
+                            {tab === "check" ? "Permission Check" : tab === "bulk" ? "Bulk Check" : tab === "expand" ? "Expand Permission" : "Lookup Subjects"}
                         </button>
                     ))}
                 </nav>
@@ -453,6 +589,67 @@ const CheckPage: NextPage = () => {
                                     <>
                                         <span className="mr-2"><IconCircleCheck /></span>
                                         Check Permission
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === "bulk" && (
+                <div className="bg-white shadow rounded-lg">
+                    <div className="px-4 py-5 sm:p-6">
+                        <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Bulk Permission Check</h3>
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Resource</label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g., document:readme"
+                                    value={bulkCheckForm.resource}
+                                    onChange={(e) => setBulkCheckForm({ ...bulkCheckForm, resource: e.target.value })}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Permission</label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g., view, edit, delete"
+                                    value={bulkCheckForm.permission}
+                                    onChange={(e) => setBulkCheckForm({ ...bulkCheckForm, permission: e.target.value })}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="mt-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Subjects (one per line)</label>
+                            <textarea
+                                rows={6}
+                                placeholder={`user:alice\nuser:bob\nuser:charlie\norganization:acme`}
+                                value={bulkCheckForm.subjects}
+                                onChange={(e) => setBulkCheckForm({ ...bulkCheckForm, subjects: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            />
+                        </div>
+
+                        <div className="mt-4">
+                            <button
+                                onClick={performBulkCheck}
+                                disabled={isLoading}
+                                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                            >
+                                {isLoading ? (
+                                    <>
+                                        <div className="animate-spin mr-2"><IconRefreshDot /></div>
+                                        Checking...
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="mr-2"><IconCircleCheck /></span>
+                                        Bulk Check
                                     </>
                                 )}
                             </button>
@@ -606,6 +803,58 @@ const CheckPage: NextPage = () => {
                                 ))}
                             </div>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {result && result.type === "bulk" && (
+                <div className="bg-white shadow rounded-lg">
+                    <div className="px-4 py-5 sm:p-6">
+                        <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Latest Result</h3>
+                        <p className="text-sm text-gray-600 mb-3">
+                            Checked {result.results.length} subjects for permission{" "}
+                            <strong>{result.results[0]?.permission}</strong> on{" "}
+                            <strong>
+                                {result.results[0]?.resource.type}:{result.results[0]?.resource.id}
+                            </strong>
+                        </p>
+                        <div className="space-y-2">
+                            {result.results.map((r) => (
+                                <div key={r.id} className="rounded-lg border p-3">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex items-start gap-3">
+                                            {hasTrace(r) && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => toggleTrace(r.id)}
+                                                    className="inline-flex items-center gap-1 pt-0.5 text-sm font-medium text-blue-600 hover:text-blue-800"
+                                                    aria-expanded={isTraceExpanded(r.id)}
+                                                >
+                                                    {isTraceExpanded(r.id) ? (
+                                                        <IconChevronDown className="h-4 w-4" aria-hidden />
+                                                    ) : (
+                                                        <IconChevronRight className="h-4 w-4" aria-hidden />
+                                                    )}
+                                                    Explain
+                                                </button>
+                                            )}
+                                            <span className="text-sm font-medium">
+                                                {r.subject.type}:{r.subject.id}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <span className={`px-2 py-1 rounded text-xs font-medium ${getResultColor(r.result)}`}>
+                                                {getResultIcon(r.result)} {r.result}
+                                            </span>
+                                            <span className="text-xs text-gray-500">{r.duration}</span>
+                                        </div>
+                                    </div>
+                                    {isTraceExpanded(r.id) && r.debugTrace?.check && (
+                                        <PermissionDecisionTree trace={r.debugTrace.check} />
+                                    )}
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             )}
