@@ -82,6 +82,37 @@
 	- Preservation: Components/routes referencing "permission" concept (PermissionDecisionTree, schema.tsx, api/spicedb/resources.js) remain intact; these reference SpiceDB's permission schema concept, not the removed page.
 	- Validation: Build succeeds with no TypeScript errors; grep confirms no dangling route references.
 	- Trade-offs: Reduces navigation surface (one fewer page) but clarifies domain ownership and simplifies user journey for authorization testing.
+- 2026-01-21: **Security Audit: Committed Secrets Review**
+	- Owner: Linus
+	- Requested by: Xavier Navarro
+	- Verdict: MEDIUM severity — `.env` files (root, examples) are git-tracked and contain a 64-char hex PSK (`31d4092f…d8a94`) and default database/pgAdmin credentials. Root cause: `.gitignore:35` rule `#.env*` is commented out.
+	- Verified findings:
+		- `.env` (tracked): `SPICEDB_PRESHARED_KEY=31d4092f…d8a94` (64-char hex)
+		- `examples/spicedb/.env` (tracked): Same PSK as `SPICEDB_GRPC_PRESHARED_KEY`
+		- `examples/postgres/.env` (tracked): `POSTGRES_PASSWORD=docker` + `postgres://postgres:docker@…` connection string
+		- `examples/pgadmin/.env` (tracked): `PGADMIN_DEFAULT_PASSWORD=docker`
+		- `.gitignore:35`: Rule `#.env*` is commented out
+	- Code quality: Safe — all production code uses `process.env.*`, no hardcoded secrets in source files.
+	- External keys: None found (GitHub, AWS, OpenAI, Anthropic tokens absent).
+	- CORRECTION (Coordinator Verified): The initial claim that `.env.local` was in git history exposing `*.mimics.cloud` hostnames and a `materialise` PSK is INCORRECT. Verification shows `.env.local` is NOT tracked and NOT in git history. The real `mimics.cloud` hostname exposure is in `doc/configuration.md:73` (a documentation example endpoint), not a leaked env file.
+	- Recommendations: (1) Confirm if `31d4092f…d8a94` PSK is real — if yes, rotate immediately; (2) Uncomment `.gitignore:35` to prevent future `.env` commits; (3) Consider git history scrub (out of scope for read-only audit).
+- 2026-06-11: 1.0.0 Release and Version Strategy
+	- Owner: Danny
+	- Requested by: Xavier Navarro
+	- Context: First stable release of the enhanced fork consolidating four enhancement vectors: framework modernization (Next.js 15, React 19, TypeScript 5.9, Tailwind 4), AI Assistant (GitHub Copilot SDK + AuthZed MCP), visualization (schema graph + Permission Decision Tree), theming + documentation (auto-discoverable themes + lean README + focused `/doc` guides).
+	- Decision: Use `1.0.0` (not 2.0.0) to signal the first stable feature-complete release and establish clean baseline for semantic versioning. 2.0.0 would imply breaking a prior 1.x line that never existed; 0.2.0 understates the magnitude.
+	- Implementation: Update `package.json` version to `1.0.0`; add `CHANGELOG.md` entry in Keep a Changelog format with Added/Changed/Removed sections; tag `v1.0.0` in git.
+	- Trade-offs: Declaring 1.0.0 implies stability commitment while some dependencies (MCP alpha, Copilot SDK) are still preview. Mitigation: use 1.1.0 for additive features; reserve 2.0.0 for genuine breaking changes.
+	- Follow-up: 1.1.0 for next additive features without breaking changes; 2.0.0 only for fundamental refactor (e.g., moving away from gRPC proxy pattern).
+- 2025-01-26: Remove Materialise Theme
+	- Owner: Rusty
+	- Status: Implemented
+	- Context: Materialise theme was one of three original themes (alongside Saffron and AuthZed). Theme system auto-discovers themes at build time.
+	- Decision: Remove Materialise theme entirely; keep Saffron (default) and AuthZed.
+	- Implementation: Deleted `themes/materialise/` directory; removed legacy `company: "materialise"` alias from `lib/theme.ts`; simplified `components/Layout.tsx` (removed Materialise-specific branding logic, `isMaterialiseTheme` variable, custom logo sizing); removed stale `.gitignore` line; regenerated theme artifacts.
+	- Files modified: `themes/materialise/` (deleted), `lib/theme.ts`, `components/Layout.tsx`, `.gitignore`; generated files auto-synced.
+	- Verification: Grep confirmed no remaining `materialise` references; generated `lib/generated/themes.ts` correctly reports only 2 themes; theme regeneration successful.
+	- Notes: Historical mentions in `.squad/decisions.md` and `.squad/agents/danny/history.md` left untouched (historical record); all generated theme files are gitignored.
 
 ## Governance
 
