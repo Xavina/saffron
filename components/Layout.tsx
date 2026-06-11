@@ -73,16 +73,13 @@ const Layout: React.FC<LayoutProps> = ({ children, enableAssistant }) => {
     const isActive = (href: string): boolean =>
         href === "/" ? router.pathname === "/" : router.pathname.startsWith(href);
 
-    const isMaterialiseTheme = activeTheme === "materialise";
-    const usesStandardBrandTypography = activeTheme === "materialise" || activeTheme === "authzed";
+    const usesStandardBrandTypography = activeTheme === "authzed";
     const themeMeta = THEME_META[activeTheme];
     const brandName = themeMeta.displayName;
     const brandLogoSrc = themeMeta.logo;
     const brandLogoAlt = `${themeMeta.displayName} logo`;
-    const mobileLogoClass = isMaterialiseTheme ? "h-8 w-auto" : "w-8 h-8";
-    const desktopLogoClass = isMaterialiseTheme
-        ? `transition-all duration-200 ${collapsed ? "h-6 w-auto" : "h-8 w-auto"}`
-        : `transition-all duration-200 ${collapsed ? "w-6 h-6" : "w-8 h-8"}`;
+    const mobileLogoClass = "w-8 h-8";
+    const desktopLogoClass = `transition-all duration-200 ${collapsed ? "w-6 h-6" : "w-8 h-8"}`;
     const mobileBrandClass = usesStandardBrandTypography ? "text-xl font-semibold text-gray-900" : "text-xl text-purple-800 cursive";
     const desktopBrandClass = usesStandardBrandTypography ? "ml-2 text-2xl font-semibold text-gray-900" : "ml-2 mt-3 text-3xl text-white-800 cursive";
     const collapsedHeaderBrandClass = usesStandardBrandTypography ? "ml-4 mt-2 text-lg font-semibold text-gray-900" : "ml-4 mt-2 cursive";
