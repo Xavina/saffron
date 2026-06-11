@@ -37,6 +37,42 @@
 	- Implementation: Ported BulkCheckForm type, bulkCheckForm state, and performBulkCheck handler to Check page; added "Bulk Check" tab positioned immediately after "Permission Check" tab; simplified Permissions page to single-check-only workflow.
 	- Validation: Build completed with zero TypeScript errors; no linting issues.
 	- Trade-offs: Permissions page now has only one function; Check page navigation expanded from 3 to 4 tabs.
+- 2026-06-09T12:30: Never use the NEXT_PUBLIC_ prefix on any environment variable.
+	- Owner: Fernando (via Copilot user directive)
+	- Context: User-requested standard for team memory
+	- Constraint: All env vars remain server-side; pass values to the client through props/server rendering instead.
+- 2026-04-30: Theme Discovery Schema — auto-discoverable theme system with folder-per-theme and build-time generation.
+	- Owner: Danny
+	- Context: Saffron had hardcoded `THEMES` tuple and CSS variable blocks; adding a theme required touching multiple files.
+	- Solution: Each theme lives in `themes/{name}/` with `theme.json` manifest. Root `themes.config.json` declares server-side default.
+	- Schema: `theme.json` has `displayName`, `logo`, and both `colors.light` and `colors.dark` (mandatory) with flat token names (prefix stripped at build time).
+	- Rationale: Flat keys map 1:1 to CSS vars (simpler), mandatory light+dark prevents partial theme bugs, folder-per-theme scales to assets.
+	- Trade-offs: Every theme fully specified (more boilerplate) vs optional dark override (fewer bugs).
+- 2025-01-21: Theme Build Script — auto-discover and generate CSS/TS at build time.
+	- Owner: Linus
+	- Context: Implementation of theme discovery system.
+	- Solution: `scripts/generate-themes.js` auto-discovers themes from `themes/*/theme.json`, generates CSS (`styles/generated-themes.css`) with `:root[data-theme="X"][data-color-mode="Y"]` selectors, generates TypeScript (`lib/generated/themes.ts`) with `DISCOVERED_THEMES` array.
+	- Constraints: CSS variables use `--saffron-*` prefix regardless of theme name; script skips invalid themes with warnings; runs as `prebuild` step.
+	- Trade-offs: Auto-discovery (no manual registration) vs. all themes must follow identical schema (per-theme prefixes future work).
+- 2026-04-29: Frontend Theme Wiring — consume auto-discovered themes and server config.
+	- Owner: Rusty
+	- Context: Implementation of frontend integration for discovery system.
+	- Solution: `lib/theme.ts` imports from `lib/generated/themes.ts`, `styles/globals.css` imports generated CSS, `ThemeProvider.tsx` accepts `configuredTheme` prop, `_app.tsx` reads `themes.config.json`.
+	- Constraints: Build script must generate before frontend builds; theme config optional with graceful fallback; theme resolution priority preserved.
+	- Next: Remove hardcoded theme blocks from `globals.css` once generated file confirmed.
+- 2026-05-12: Remap shell and theme-demo utility classes to theme CSS variables.
+	- Owner: Rusty
+	- Context: Materialise skin updated tokens but shared shell still rendered Tailwind utilities (gray backgrounds, purple accents).
+	- Decision: Remap specific utilities in `styles/globals.css` (`text-gray-*`, `border-gray-300`, hover/active states) to theme CSS variables instead of component rewrites.
+	- Rationale: Utility layer is the controlling seam; targeted remap keeps changes small, makes skin visibly affect shell, avoids broad component churn.
+- 2026-06-12: README Documentation Restructure — split monolithic README into lean landing page + 6 focused doc files.
+	- Owner: Danny
+	- Requested by: Xavier Navarro
+	- Context: Root README had grown to 496 lines covering features, prerequisites, installation, configuration, usage, API, tech stack, development, troubleshooting, and license. New users faced cognitive overload.
+	- Solution: Lean README (55 lines) with features, one-liner Docker quick-start, and documentation index. Six focused doc files under `doc/`: `installation.md`, `configuration.md`, `usage.md`, `api.md`, `development.md`, `troubleshooting.md`.
+	- Content: All 496 lines moved verbatim; no information lost; back-links on each doc file for easy navigation.
+	- Trade-offs: Navigation requires jumping between files (vs. single reference) but improves maintainability and discoverability for growing teams. Common pattern in mature open-source projects.
+	- Validation: Content preserved, links working (relative paths), markdown well-formed, cognitive load reduced for new users.
 
 ## Governance
 
